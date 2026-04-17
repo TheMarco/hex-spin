@@ -45,6 +45,19 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 camera.layers.enable(1);
 
+const BOARD_WIDTH = 6; // flat-top hex, 2 * HEX_SIDE
+const BOARD_FIT_MARGIN = 1.08; // 8% breathing room
+const BASE_CAMERA_Z = camera.position.z;
+function fitCamera(w, h) {
+  const aspect = w / h;
+  camera.aspect = aspect;
+  const fovRad = (camera.fov * Math.PI) / 180;
+  const minZ = (BOARD_WIDTH * BOARD_FIT_MARGIN) / (2 * aspect * Math.tan(fovRad / 2));
+  camera.position.z = Math.max(BASE_CAMERA_Z, minZ);
+  camera.updateProjectionMatrix();
+}
+fitCamera(window.innerWidth, window.innerHeight);
+
 const { render: renderFrame, setSize } = createComposer({ renderer, scene, camera });
 
 const vertexDots = createVertexDots({ board, boardGroup });
@@ -127,8 +140,8 @@ function resetRun() {
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+  fitCamera(w, h);
+  cameraOrigin.copy(camera.position);
   renderer.setSize(w, h, false);
   setSize(w, h);
   refreshOutlineResolution(w, h);
