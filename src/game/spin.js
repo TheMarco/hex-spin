@@ -40,7 +40,6 @@ export async function spin({
       if (t) return { type: 'real', idx, tKey, cr: [c, r], color: t.color };
       return { type: 'phantom', idx, cr: [c, r], color: phantomMap ? phantomMap[idx] : undefined };
     });
-    const origColors = slots.map((s) => s.color);
 
     // Pivot rotation. Real triangles rotate physically; phantom slots get a
     // temporary "ghost" Triangle rendered at the off-board position carrying
@@ -60,7 +59,7 @@ export async function spin({
     // those need to fade out as they exit the hex boundary.
     const fadeInGhosts = [];
     const fadeOutReals = [];
-    const allGhosts = [];
+    const ghostByIdx = new Map();
 
     for (const s of slots) {
       const targetIdx = (s.idx + 1) % 6;
@@ -72,11 +71,9 @@ export async function spin({
         boardGroup.add(ghost.group);
         pivot.attach(ghost.group);
         ghost.setOpacity(0);
-        allGhosts.push(ghost);
-        if (target.type === 'real') {
-          fadeInGhosts.push(ghost);
-        }
-        // phantom→phantom: leave at opacity 0 forever
+        ghostByIdx.set(s.idx, ghost);
+        if (target.type === 'real') fadeInGhosts.push(ghost);
+        // phantom→phantom: leave at opacity 0 forever (will be disposed)
       } else if (target.type === 'phantom') {
         // Real triangle about to exit the hex boundary.
         fadeOutReals.push(triangleViews[s.tKey]);
@@ -89,36 +86,82 @@ export async function spin({
       for (const view of fadeOutReals) view.setOpacity(1 - eased);
     });
 
-    for (const g of realGroups) {
-      boardGroup.attach(g);
-      g.position.set(0, 0, 0);
-      g.rotation.set(0, 0, 0);
-      g.scale.set(1, 1, 1);
-      g.updateMatrix();
-    }
-    boardGroup.remove(pivot);
-    for (const ghost of allGhosts) ghost.dispose();
-
     if (applyColorShift) {
-      const shifted = shiftColorsCW(origColors);
-      slots.forEach((s, i) => {
-        const newColor = shifted[i];
-        if (newColor === undefined) return;
-        if (s.type === 'real') {
-          board[s.tKey].color = newColor;
-          triangleViews[s.tKey].setColor(newColor);
-        } else if (phantomMap) {
-          phantomMap[s.idx] = newColor;
-        }
-      });
-    }
+      // Post-tween: bake pivot transform into each group, reassign
+      // triangleViews keys to follow physical positions, dispose exited
+      // reals, promote entered ghosts. No color swap or snap-back — the
+      // rotation IS the state change (spec §3.5).
 
-    // Any real triangles we faded out during the exit arc are now back at
-    // their home slots with their new (incoming) color. Fade them back in so
-    // the arriving color reads cleanly instead of popping.
-    for (const view of fadeOutReals) {
-      view.setOpacity(0);
-      view.fade(1, 220);
+      // Bake world transform into local for every surviving real group.
+      for (const g of realGroups) boardGroup.attach(g);
+
+      // Dispose reals that exited the hex (real → phantom target).
+      for (let i = 0; i < 6; i++) {
+        const s = slots[i];
+        const t = slots[(i + 1) % 6];
+        if (s.type === 'real' && t.type === 'phantom') {
+          const view = triangleViews[s.tKey];
+          view.group.parent?.remove(view.group);
+          view.dispose();
+        }
+      }
+
+      // Promote ghosts landing on real slots; dispose the rest.
+      const promoted = new Map();
+      for (let i = 0; i < 6; i++) {
+        const ghost = ghostByIdx.get(i);
+        if (!ghost) continue;
+        const t = slots[(i + 1) % 6];
+        if (t.type === 'real') {
+          boardGroup.attach(ghost.group);
+          promoted.set(t.tKey, ghost);
+        } else {
+          ghost.group.parent?.remove(ghost.group);
+          ghost.dispose();
+        }
+      }
+
+      boardGroup.remove(pivot);
+
+      // Rebuild the ring's triangleViews entries in-place.
+      const remapped = {};
+      for (let i = 0; i < 6; i++) {
+        const s = slots[i];
+        const t = slots[(i + 1) % 6];
+        if (t.type !== 'real') continue;
+        remapped[t.tKey] =
+          s.type === 'real' ? triangleViews[s.tKey] : promoted.get(t.tKey);
+      }
+      for (let i = 0; i < 6; i++) {
+        if (slots[i].type === 'real') delete triangleViews[slots[i].tKey];
+      }
+      Object.assign(triangleViews, remapped);
+
+      // Update the logical board + phantom buffer to match the carry.
+      for (let i = 0; i < 6; i++) {
+        const s = slots[i];
+        const t = slots[(i + 1) % 6];
+        if (t.type === 'real') {
+          if (s.color !== undefined) board[t.tKey].color = s.color;
+        } else if (phantomMap) {
+          phantomMap[t.idx] = s.color;
+        }
+      }
+    } else {
+      // Visual-only rotation — snap everything back and dispose ghosts.
+      for (const g of realGroups) {
+        boardGroup.attach(g);
+        g.position.set(0, 0, 0);
+        g.rotation.set(0, 0, 0);
+        g.scale.set(1, 1, 1);
+        g.updateMatrix();
+      }
+      boardGroup.remove(pivot);
+      for (const ghost of ghostByIdx.values()) {
+        ghost.group.parent?.remove(ghost.group);
+        ghost.dispose();
+      }
+      for (const view of fadeOutReals) view.setOpacity(1);
     }
 
     gameState.spins++;

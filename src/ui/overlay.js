@@ -1,10 +1,11 @@
 import { NEON } from '../utils/colors.js';
 import { gameState } from '../game/state.js';
 
+// Each phase announces itself in the color newly introduced at that phase.
 const PHASE_COLORS = {
-  2: NEON.purple,
-  3: NEON.orange,
-  4: NEON.yellow,
+  2: NEON.orange,
+  3: NEON.green,
+  4: NEON.blue,
 };
 
 const PHASE_LOCK_MS = 1600;

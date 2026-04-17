@@ -5,16 +5,16 @@ export const PHASE_THRESHOLDS = { 2: 11, 3: 26, 4: 51 };
 // Heat bar — replaces stones as the run-end mechanic. 0..1 range.
 // Drains while idle, refills on clears. Empty = game over.
 // Drain scales with phase so higher levels feel more urgent:
-//   phase 1: 1.0× (base 1.2%/s → 83s grace)
-//   phase 2: 1.35×                (62s)
-//   phase 3: 1.7×                 (49s)
-//   phase 4: 2.05×                (41s)
+//   phase 1: 1.0× (base 0.7%/s → 143s grace)
+//   phase 2: 1.22×               (117s)
+//   phase 3: 1.44×                (99s)
+//   phase 4: 1.66×                (86s)
 export const HEAT_START = 1.0;
 export const HEAT_MAX = 1.0;
-export const HEAT_DRAIN_PER_SEC = 0.012;
-export const HEAT_PHASE_DRAIN_SCALE = 0.35; // +35% drain per phase beyond 1
-export const HEAT_HEX_BASE = 0.14;
-export const HEAT_PHASE_BONUS = 0.35;
+export const HEAT_DRAIN_PER_SEC = 0.007;
+export const HEAT_PHASE_DRAIN_SCALE = 0.22; // +22% drain per phase beyond 1
+export const HEAT_HEX_BASE = 0.18;
+export const HEAT_PHASE_BONUS = 0.4;
 export const HEAT_DANGER = 0.3;
 
 export function drainMultiplierForPhase(phase) {

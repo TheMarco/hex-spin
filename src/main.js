@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createScene, mountBoard, unmountBoard } from './render/scene.js';
 import { createBoard, createPhantomSlots } from './game/board.js';
-import { PHASE_PALETTES } from './utils/colors.js';
+import { PHASE_PALETTES, PHASE_NEW_COLOR, NEW_COLOR_BONUS_MULT } from './utils/colors.js';
 import { setupPointer } from './input/pointer.js';
 import { spin } from './game/spin.js';
 import { refreshOutlineResolution } from './render/triangles.js';
@@ -100,19 +100,25 @@ function handleTap(k, j) {
     effects: particles,
     hooks: {
       onCascadeWave: ({ cascade, hexes, pointsPerHex }) => {
+        const newColor = PHASE_NEW_COLOR[gameState.phase];
+        let waveHasBonus = false;
         for (const h of hexes) {
-          gameState.score += pointsPerHex;
+          const bonus = Boolean(newColor && h.color === newColor);
+          if (bonus) waveHasBonus = true;
+          const points = bonus ? pointsPerHex * NEW_COLOR_BONUS_MULT : pointsPerHex;
+          gameState.score += points;
           const [hx, hy] = vPos(h.k, h.j);
           hud.spawnFloatingScore(
             hx + boardGroup.position.x,
             hy + boardGroup.position.y,
-            pointsPerHex,
-            h.color
+            points,
+            h.color,
+            bonus
           );
         }
         addHeat(heatGainFromWave(hexes.length));
         playImplodeWhoosh();
-        playHexClear(cascade);
+        playHexClear(cascade, { bonus: waveHasBonus });
         if (cascade >= 2) shake(0.03 * cascade, 300);
         hud.refresh();
       },

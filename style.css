@@ -124,6 +124,11 @@ body {
   animation: float-up 1s ease-out forwards;
   pointer-events: none;
 }
+.float-score.bonus {
+  font-size: 30px;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px currentColor, 0 0 22px currentColor, 0 0 34px currentColor;
+}
 
 @keyframes float-up {
   0% {

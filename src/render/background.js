@@ -1,56 +1,271 @@
 import * as THREE from 'three';
-import { NEON, BG } from '../utils/colors.js';
 
-const BLOOM_LAYER = 1;
-
-// Tron-floor grid receding into the distance. Spec §6.7, §14.6.
+// Deep-space backdrop: 5 volumetric nebula planes with FBM-noise color fields
+// sitting in the distance, and ~3500 stars flying toward the camera from a
+// vanishing point. Stars cycle through a z-range so density stays constant;
+// a shader-driven fade smooths the wrap. Hero-sized stars get diffraction
+// spikes so they read as bright points of light, not disks.
 export function createBackground({ scene }) {
-  scene.fog = new THREE.FogExp2(new THREE.Color(BG).getHex(), 0.02);
+  const root = new THREE.Group();
+  scene.add(root);
 
-  const material = new THREE.ShaderMaterial({
+  // =========================================================================
+  // Nebula backdrop
+  // =========================================================================
+  const nebulaMaterials = [];
+  const nebulaConfigs = [
+    { x: -28, y: 14, z: -55, size: 60, colorA: [1.0, 0.35, 0.6], colorB: [0.3, 0.05, 0.4], seed: 1.7 },
+    { x: 30, y: -18, z: -70, size: 62, colorA: [0.2, 0.55, 1.0], colorB: [0.05, 0.1, 0.4], seed: 4.3 },
+    { x: -18, y: -22, z: -50, size: 48, colorA: [1.0, 0.7, 0.35], colorB: [0.32, 0.12, 0.05], seed: 2.9 },
+    { x: 32, y: 24, z: -82, size: 70, colorA: [0.62, 0.32, 1.0], colorB: [0.18, 0.05, 0.5], seed: 5.6 },
+    { x: 0, y: 4, z: -100, size: 95, colorA: [0.3, 0.9, 0.95], colorB: [0.05, 0.22, 0.42], seed: 3.1 },
+  ];
+
+  const nebulaVertex = /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const nebulaFragment = /* glsl */ `
+    precision highp float;
+    varying vec2 vUv;
+    uniform float uTime;
+    uniform vec3 uColorA;
+    uniform vec3 uColorB;
+    uniform float uSeed;
+    uniform float uOpacity;
+
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float a = hash(i);
+      float b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0));
+      float d = hash(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p *= 2.0;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    void main() {
+      vec2 uv = vUv - 0.5;
+      float d = length(uv);
+      // Soft circular falloff so nebula bodies fade into black at the edges.
+      float rad = smoothstep(0.5, 0.0, d);
+      rad = pow(rad, 1.5);
+
+      vec2 p = vUv * 3.2 + vec2(uSeed);
+      float n1 = fbm(p + vec2(uTime * 0.02, uTime * 0.012));
+      float n2 = fbm(p * 2.2 + vec2(-uTime * 0.009, uTime * 0.016));
+      float cloud = pow(n1 * 0.7 + n2 * 0.55, 1.5);
+
+      float density = rad * cloud * uOpacity;
+      vec3 col = mix(uColorA, uColorB, cloud * 0.75);
+      gl_FragColor = vec4(col * density * 1.35, density * 0.78);
+    }
+  `;
+
+  // Forward-drift cycle for nebulas: they slowly approach the camera, wrap
+  // back out to Z_FAR with a fade-in so the cycle seam is invisible.
+  const NEB_Z_FAR = -130;
+  const NEB_Z_NEAR = -28;
+  const NEB_RANGE = NEB_Z_NEAR - NEB_Z_FAR;
+  const NEB_FADE_BAND = 14;
+  const NEB_SPEED = 1.5; // units/sec — 1/6 of star speed
+
+  const nebulaMeshes = [];
+
+  for (const cfg of nebulaConfigs) {
+    const geom = new THREE.PlaneGeometry(cfg.size, cfg.size);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uColorA: { value: new THREE.Vector3(...cfg.colorA) },
+        uColorB: { value: new THREE.Vector3(...cfg.colorB) },
+        uSeed: { value: cfg.seed },
+        uOpacity: { value: 1 },
+      },
+      vertexShader: nebulaVertex,
+      fragmentShader: nebulaFragment,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(cfg.x, cfg.y, cfg.z);
+    mesh.renderOrder = -20;
+    root.add(mesh);
+    nebulaMaterials.push(mat);
+    // Each nebula's initial cycle phase matches its configured z, so the
+    // scene opens with the configured layout and drifts from there.
+    nebulaMeshes.push({ mesh, material: mat, initialPhase: cfg.z - NEB_Z_FAR });
+  }
+
+  // =========================================================================
+  // Forward-motion starfield (hyperspace feel, soothing pace)
+  // =========================================================================
+  const STAR_COUNT = 3500;
+  const DEPTH_NEAR = 6; // closest world-z depth before a star wraps
+  const DEPTH_FAR = 160;
+  const DEPTH_RANGE = DEPTH_FAR - DEPTH_NEAR;
+  const SPREAD_XY = 48;
+
+  const positions = new Float32Array(STAR_COUNT * 3);
+  const sizes = new Float32Array(STAR_COUNT);
+  const colors = new Float32Array(STAR_COUNT * 3);
+  const phases = new Float32Array(STAR_COUNT);
+
+  // Mostly white; a minority of soft magical tints for variety.
+  const palette = [
+    new THREE.Color('#ffffff'),
+    new THREE.Color('#ffffff'),
+    new THREE.Color('#ffffff'),
+    new THREE.Color('#ffffff'),
+    new THREE.Color('#d0e4ff'), // pale blue
+    new THREE.Color('#e4d0ff'), // lavender
+    new THREE.Color('#d0ffee'), // icy mint
+    new THREE.Color('#ffdbb0'), // warm peach
+    new THREE.Color('#ffd0e0'), // rose
+  ];
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 2 * SPREAD_XY;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * SPREAD_XY;
+    // Initial phase within the depth cycle — staggers stars evenly along z.
+    positions[i * 3 + 2] = Math.random() * DEPTH_RANGE;
+
+    const bias = Math.random();
+    let size;
+    if (bias < 0.025) size = 5 + Math.random() * 3.5;
+    else if (bias < 0.18) size = 2 + Math.random() * 2;
+    else size = 0.6 + Math.random() * 1.2;
+    sizes[i] = size;
+
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    const brightness = 0.6 + Math.random() * 0.4;
+    colors[i * 3] = color.r * brightness;
+    colors[i * 3 + 1] = color.g * brightness;
+    colors[i * 3 + 2] = color.b * brightness;
+
+    phases[i] = Math.random() * Math.PI * 2;
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  geom.setAttribute('starColor', new THREE.BufferAttribute(colors, 3));
+  geom.setAttribute('twinklePhase', new THREE.BufferAttribute(phases, 1));
+
+  const starMaterial = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
-      uColor: { value: new THREE.Color(NEON.cyan) },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+      uSpeed: { value: 9.0 },
+      uDepthRange: { value: DEPTH_RANGE },
+      uDepthNear: { value: DEPTH_NEAR },
     },
     vertexShader: /* glsl */ `
-      varying vec2 vUv;
-      varying vec3 vWorldPos;
+      attribute float size;
+      attribute float twinklePhase;
+      attribute vec3 starColor;
+      uniform float uTime;
+      uniform float uPixelRatio;
+      uniform float uSpeed;
+      uniform float uDepthRange;
+      uniform float uDepthNear;
+      varying vec3 vColor;
+      varying float vTwinkle;
+      varying float vSpike;
+      varying float vFade;
+
       void main() {
-        vUv = uv;
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        vWorldPos = wp.xyz;
-        gl_Position = projectionMatrix * viewMatrix * wp;
+        // position.z holds each star's initial phase in [0, uDepthRange].
+        // The phase advances with time and wraps. World z maps it into the
+        // range [-(near+range), -near], so stars slide toward the camera.
+        float phase = mod(position.z + uTime * uSpeed, uDepthRange);
+        float worldZ = -(uDepthNear + uDepthRange) + phase;
+        vec3 pos = vec3(position.x, position.y, worldZ);
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+
+        float twinkle = 0.65 + 0.35 * sin(uTime * 0.9 + twinklePhase);
+        vTwinkle = twinkle;
+        vColor = starColor;
+        vSpike = smoothstep(2.8, 5.8, size);
+
+        // Fade in just after the far-side wrap, fade out just before passing
+        // the camera — hides the cycle seam.
+        float depth = -mvPosition.z;
+        float fadeIn = smoothstep(uDepthNear + uDepthRange, uDepthNear + uDepthRange - 22.0, depth);
+        float fadeOut = smoothstep(uDepthNear, uDepthNear + 4.0, depth);
+        vFade = fadeIn * fadeOut;
+
+        gl_PointSize = size * uPixelRatio * (180.0 / max(depth, 0.1));
+        gl_Position = projectionMatrix * mvPosition;
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uTime;
-      uniform vec3 uColor;
-      varying vec2 vUv;
-      varying vec3 vWorldPos;
+      varying vec3 vColor;
+      varying float vTwinkle;
+      varying float vSpike;
+      varying float vFade;
 
       void main() {
-        vec2 scrolled = vUv + vec2(0.0, uTime * 0.012);
-        vec2 grid = abs(fract(scrolled * 40.0 - 0.5) - 0.5) / fwidth(scrolled * 40.0);
-        float line = 1.0 - min(min(grid.x, grid.y), 1.0);
-        // Fade with distance from origin in xz-plane.
-        float dist = length(vWorldPos.xz);
-        float fade = smoothstep(80.0, 6.0, dist);
-        gl_FragColor = vec4(uColor * line * fade, line * fade * 0.85);
+        vec2 uv = gl_PointCoord - 0.5;
+        float d = length(uv);
+
+        float halo = smoothstep(0.5, 0.0, d);
+        float core = pow(halo, 2.6);
+
+        // Axis-aligned diffraction spikes, scaled by vSpike so only large
+        // stars show them.
+        float spikeH = exp(-abs(uv.y) * 60.0) * (1.0 - smoothstep(0.0, 0.5, abs(uv.x)));
+        float spikeV = exp(-abs(uv.x) * 60.0) * (1.0 - smoothstep(0.0, 0.5, abs(uv.y)));
+        float spike = (spikeH + spikeV) * vSpike;
+
+        float alpha = (halo * 0.28 + core + spike * 0.8) * vTwinkle * vFade;
+        vec3 rgb = vColor * (core * 1.6 + halo * 0.22 + spike * 1.25);
+        gl_FragColor = vec4(rgb, alpha);
       }
     `,
-    transparent: true,
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
+    transparent: true,
   });
 
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), material);
-  plane.rotation.x = -Math.PI / 2;
-  plane.position.y = -4;
-  plane.layers.set(BLOOM_LAYER); // subtle glow per spec §6.7
-  scene.add(plane);
+  const points = new THREE.Points(geom, starMaterial);
+  points.frustumCulled = false;
+  points.renderOrder = -10;
+  root.add(points);
 
   function update(timeMs) {
-    material.uniforms.uTime.value = timeMs * 0.001;
+    const t = timeMs * 0.001;
+    starMaterial.uniforms.uTime.value = t;
+    for (const n of nebulaMeshes) {
+      const phase = ((n.initialPhase + t * NEB_SPEED) % NEB_RANGE + NEB_RANGE) % NEB_RANGE;
+      n.mesh.position.z = NEB_Z_FAR + phase;
+      const fadeIn = Math.min(phase / NEB_FADE_BAND, 1);
+      const fadeOut = Math.min((NEB_RANGE - phase) / NEB_FADE_BAND, 1);
+      n.material.uniforms.uOpacity.value = fadeIn * fadeOut;
+      n.material.uniforms.uTime.value = t;
+    }
   }
 
-  return { update, plane, material };
+  return { update };
 }

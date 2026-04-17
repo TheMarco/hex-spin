@@ -5,10 +5,10 @@ import { gameState } from '../game/state.js';
 const PALETTE_ORDER = [
   NEON.magenta,
   NEON.cyan,
-  NEON.lime,
-  NEON.purple,
-  NEON.orange,
   NEON.yellow,
+  NEON.orange,
+  NEON.green,
+  NEON.blue,
 ];
 
 export function createHUD({ container, camera }) {
@@ -65,7 +65,7 @@ export function createHUD({ container, camera }) {
   }
 
   const tmpVec = new THREE.Vector3();
-  function spawnFloatingScore(localX, localY, points, color) {
+  function spawnFloatingScore(localX, localY, points, color, bonus = false) {
     tmpVec.set(localX, localY, 0);
     // Local board coords → world coords (board is at scene root with offset; but
     // we'll project assuming the board is mostly near origin — close enough for HUD).
@@ -73,11 +73,11 @@ export function createHUD({ container, camera }) {
     const x = ((tmpVec.x + 1) / 2) * window.innerWidth;
     const y = ((1 - tmpVec.y) / 2) * window.innerHeight;
     const el = document.createElement('div');
-    el.className = 'float-score';
+    el.className = bonus ? 'float-score bonus' : 'float-score';
     el.style.color = color;
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
-    el.textContent = `+${points.toLocaleString()}`;
+    el.textContent = bonus ? `+${points.toLocaleString()} ×2` : `+${points.toLocaleString()}`;
     floatLayer.appendChild(el);
     setTimeout(() => el.remove(), 1100);
   }
