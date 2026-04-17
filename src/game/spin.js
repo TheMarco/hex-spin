@@ -4,6 +4,7 @@ import { isValidVertex } from './board.js';
 import { tween } from '../utils/animate.js';
 import { gameState, withBusy } from './state.js';
 import { resolveCompletions } from './rules.js';
+import { Triangle } from '../render/triangles.js';
 
 // CW shift: slot i receives the color that was in slot (i+5)%6.
 export function shiftColorsCW(colors) {
@@ -36,22 +37,56 @@ export async function spin({
     const slots = ts.map(([c, r], idx) => {
       const tKey = key(c, r);
       const t = board[tKey];
-      if (t) return { type: 'real', idx, tKey, color: t.color };
-      return { type: 'phantom', idx, color: phantomMap ? phantomMap[idx] : undefined };
+      if (t) return { type: 'real', idx, tKey, cr: [c, r], color: t.color };
+      return { type: 'phantom', idx, cr: [c, r], color: phantomMap ? phantomMap[idx] : undefined };
     });
     const origColors = slots.map((s) => s.color);
 
-    // Pivot rotation animates only real triangles.
+    // Pivot rotation. Real triangles rotate physically; phantom slots get a
+    // temporary "ghost" Triangle rendered at the off-board position carrying
+    // the hidden color — so the player visibly watches that color arc in.
     const pivot = new THREE.Group();
     pivot.position.set(vx, vy, 0);
     boardGroup.add(pivot);
+
     const realGroups = slots
       .filter((s) => s.type === 'real')
       .map((s) => triangleViews[s.tKey].group);
     for (const g of realGroups) pivot.attach(g);
 
+    // Build ghosts for phantom slots. Only show the ones whose rotation target
+    // is a real slot (those visibly enter the board); phantom→phantom stays
+    // hidden throughout. Also track real triangles whose target is phantom —
+    // those need to fade out as they exit the hex boundary.
+    const fadeInGhosts = [];
+    const fadeOutReals = [];
+    const allGhosts = [];
+
+    for (const s of slots) {
+      const targetIdx = (s.idx + 1) % 6;
+      const target = slots[targetIdx];
+
+      if (s.type === 'phantom') {
+        if (s.color === undefined) continue;
+        const ghost = new Triangle(s.cr[0], s.cr[1], s.color);
+        boardGroup.add(ghost.group);
+        pivot.attach(ghost.group);
+        ghost.setOpacity(0);
+        allGhosts.push(ghost);
+        if (target.type === 'real') {
+          fadeInGhosts.push(ghost);
+        }
+        // phantom→phantom: leave at opacity 0 forever
+      } else if (target.type === 'phantom') {
+        // Real triangle about to exit the hex boundary.
+        fadeOutReals.push(triangleViews[s.tKey]);
+      }
+    }
+
     await tween(340, 'easeInOutCubic', (eased) => {
       pivot.rotation.z = -eased * (Math.PI / 3);
+      for (const ghost of fadeInGhosts) ghost.setOpacity(eased);
+      for (const view of fadeOutReals) view.setOpacity(1 - eased);
     });
 
     for (const g of realGroups) {
@@ -62,12 +97,13 @@ export async function spin({
       g.updateMatrix();
     }
     boardGroup.remove(pivot);
+    for (const ghost of allGhosts) ghost.dispose();
 
     if (applyColorShift) {
       const shifted = shiftColorsCW(origColors);
       slots.forEach((s, i) => {
         const newColor = shifted[i];
-        if (newColor === undefined) return; // phantom slot had no seed
+        if (newColor === undefined) return;
         if (s.type === 'real') {
           board[s.tKey].color = newColor;
           triangleViews[s.tKey].setColor(newColor);
@@ -75,6 +111,14 @@ export async function spin({
           phantomMap[s.idx] = newColor;
         }
       });
+    }
+
+    // Any real triangles we faded out during the exit arc are now back at
+    // their home slots with their new (incoming) color. Fade them back in so
+    // the arriving color reads cleanly instead of popping.
+    for (const view of fadeOutReals) {
+      view.setOpacity(0);
+      view.fade(1, 220);
     }
 
     gameState.spins++;

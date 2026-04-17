@@ -84,6 +84,11 @@ export class Triangle {
     this.outlineMaterial.color.set(neonHex);
   }
 
+  setOpacity(op) {
+    this.fillMaterial.opacity = op;
+    this.outlineMaterial.opacity = op;
+  }
+
   fade(toOpacity, durationMs) {
     const fromFill = this.fillMaterial.opacity;
     const fromOutline = this.outlineMaterial.opacity;
