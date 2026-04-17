@@ -2,20 +2,51 @@ import { ROWS, COLS, ring, isRealVertex, key, isInsideHex } from '../utils/math.
 
 const randColor = (palette) => palette[Math.floor(Math.random() * palette.length)];
 
+// Avoid any starting configuration where a hex ring is already monochrome —
+// otherwise the completed hex just sits on the board at startup (cascades only
+// resolve inside spin()). Re-roll until no ring of real triangles is uniform.
 export function createBoard(palette) {
-  const board = {};
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      if (!isInsideHex(col, row)) continue;
-      board[key(col, row)] = {
-        col,
-        row,
-        color: randColor(palette),
-        isUp: (col + row) % 2 === 0,
-      };
+  while (true) {
+    const board = {};
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        if (!isInsideHex(col, row)) continue;
+        board[key(col, row)] = {
+          col,
+          row,
+          color: randColor(palette),
+          isUp: (col + row) % 2 === 0,
+        };
+      }
+    }
+    if (!hasCompletedHex(board)) return board;
+  }
+}
+
+function hasCompletedHex(board) {
+  for (let j = 0; j <= ROWS; j++) {
+    for (let k = 0; k <= COLS; k++) {
+      if (!isRealVertex(k, j)) continue;
+      const ts = ring(k, j);
+      let first = null;
+      let full = true;
+      let mono = true;
+      for (const [c, r] of ts) {
+        const t = board[key(c, r)];
+        if (!t) {
+          full = false;
+          break;
+        }
+        if (first === null) first = t.color;
+        else if (t.color !== first) {
+          mono = false;
+          break;
+        }
+      }
+      if (full && mono) return true;
     }
   }
-  return board;
+  return false;
 }
 
 // For every tappable vertex with phantom (missing) ring slots, seed each
