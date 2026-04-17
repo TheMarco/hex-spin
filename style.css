@@ -1,0 +1,399 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0612;
+  color: #fff;
+  font-family: 'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  font-family: 'JetBrains Mono', 'Space Mono', ui-monospace, monospace;
+}
+
+.hud-top-left,
+.hud-top-center,
+.hud-top-right {
+  position: fixed;
+  padding: 44px 16px 12px; /* clear the heat bar */
+}
+
+.hud-top-left {
+  top: 0;
+  left: 0;
+}
+.hud-top-center {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.hud-top-right {
+  top: 0;
+  right: 0;
+  text-align: right;
+}
+
+.phase-label {
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: #00f0ff;
+  text-shadow: 0 0 6px #00f0ff;
+  margin-bottom: 8px;
+}
+
+.palette-strip {
+  display: flex;
+  gap: 6px;
+}
+.palette-strip .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--c) 50%, transparent);
+  transition: background 320ms ease, box-shadow 320ms ease;
+}
+.palette-strip .dot.active {
+  background: var(--c);
+  box-shadow: 0 0 6px var(--c), 0 0 14px color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+.score {
+  font-size: 48px;
+  font-weight: 700;
+  color: #00f0ff;
+  text-shadow: 0 0 8px #00f0ff, 0 0 18px rgba(0, 240, 255, 0.6);
+  letter-spacing: 0.05em;
+}
+
+.hex-count {
+  font-size: 16px;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+.cascade-mult {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f0ff00;
+  text-shadow: 0 0 8px #f0ff00;
+  margin: 4px 0;
+  min-height: 28px;
+}
+.longest-cascade {
+  font-size: 12px;
+  color: #888;
+  letter-spacing: 0.1em;
+}
+
+.float-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  padding: 0;
+}
+.float-score {
+  position: absolute;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+  transform: translate(-50%, -50%);
+  animation: float-up 1s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0%) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -160%) scale(1);
+  }
+}
+
+/* Heat rail — prominent top bar, full width */
+
+.heat-rail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.55);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.35);
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.heat-label {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: rgba(0, 240, 255, 0.85);
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.heat-track {
+  flex: 1;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  overflow: hidden;
+  position: relative;
+}
+.heat-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 180ms ease-out, background 320ms ease;
+}
+.heat-percent {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  min-width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+  color: #00f0ff;
+  text-shadow: 0 0 6px #00f0ff;
+}
+.heat-rail.danger .heat-track {
+  animation: heat-track-danger 0.5s ease-in-out infinite alternate;
+}
+@keyframes heat-track-danger {
+  from {
+    box-shadow: inset 0 0 8px rgba(255, 20, 147, 0.2);
+  }
+  to {
+    box-shadow: inset 0 0 18px rgba(255, 20, 147, 0.7);
+  }
+}
+
+/* Screen-edge vignette when heat is critical */
+.danger-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  box-shadow: inset 0 0 120px rgba(255, 20, 147, 0.7);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.danger-vignette.active {
+  animation: vignette-pulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes vignette-pulse {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+/* Phase transition (M12) */
+
+.phase-sweep {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(to bottom, transparent, #00f0ff, transparent);
+  box-shadow: 0 0 24px #00f0ff, 0 0 48px rgba(0, 240, 255, 0.6);
+  pointer-events: none;
+  z-index: 100;
+  top: -12px;
+  animation: phase-sweep 600ms cubic-bezier(0.42, 0, 0.58, 1) forwards;
+}
+@keyframes phase-sweep {
+  to {
+    top: 100vh;
+  }
+}
+
+.phase-flash {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 99;
+  animation: phase-flash 200ms ease-out forwards;
+}
+@keyframes phase-flash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.phase-announce {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(48px, 10vw, 110px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  z-index: 101;
+  pointer-events: none;
+  opacity: 0;
+  text-shadow: 0 0 16px currentColor, 0 0 36px currentColor, 0 0 64px currentColor;
+  animation: phase-announce 1400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes phase-announce {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Game over overlay (M13) */
+
+.gameover {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 18, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  pointer-events: auto;
+  animation: gameover-fade 360ms ease-out forwards;
+}
+@keyframes gameover-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.gameover-card {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid #00f0ff;
+  box-shadow: 0 0 24px rgba(0, 240, 255, 0.4);
+  padding: 32px 40px;
+  text-align: center;
+  min-width: 320px;
+}
+.gameover-title {
+  color: #00f0ff;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 8px #00f0ff;
+  margin-bottom: 24px;
+}
+.gameover-stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+  color: #fff;
+  margin-bottom: 28px;
+}
+.gameover-stats td {
+  padding: 6px 0;
+}
+.gameover-stats td:first-child {
+  text-align: left;
+  color: #888;
+  letter-spacing: 0.05em;
+}
+.gameover-stats td:last-child {
+  text-align: right;
+  font-weight: 700;
+  color: #00f0ff;
+  text-shadow: 0 0 6px #00f0ff;
+}
+.play-again {
+  background: transparent;
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  padding: 12px 24px;
+  cursor: pointer;
+  text-shadow: 0 0 6px #00f0ff;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+.play-again:hover {
+  background: rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.5);
+}
+
+/* Mute toggle */
+.mute-btn {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 50;
+  background: transparent;
+  border: 1px solid rgba(0, 240, 255, 0.5);
+  color: #00f0ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-shadow: 0 0 4px rgba(0, 240, 255, 0.6);
+  transition: background 200ms ease, border-color 200ms ease;
+  pointer-events: auto;
+}
+.mute-btn:hover {
+  background: rgba(0, 240, 255, 0.12);
+  border-color: #00f0ff;
+}
+.mute-btn.muted {
+  color: #555;
+  border-color: #555;
+  text-shadow: none;
+}
