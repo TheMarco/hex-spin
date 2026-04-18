@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hex Spin Style Showcase</title>
+    <link rel="stylesheet" href="./style-showcase.css" />
+  </head>
+  <body>
+    <canvas id="style-scene"></canvas>
+
+    <div class="showcase-overlay">
+      <header class="showcase-header">
+        <p class="eyebrow">Hex Spin</p>
+        <h1>Triangle Inner Style Showcase</h1>
+        <p class="lede">Outer triangle fill and outline stay fixed. Each column shows the actual in-game phase pairing: inner detail style plus that phase's world theme.</p>
+        <a class="back-link" href="./">Open Game</a>
+      </header>
+
+      <section class="phase-grid">
+        <article class="phase-card" data-phase-card="1">
+          <p class="phase-tag">Phase 1</p>
+          <h2>Baseline PCB</h2>
+          <p>Original chip-node seam with direct traces.</p>
+        </article>
+        <article class="phase-card" data-phase-card="2">
+          <p class="phase-tag">Phase 2</p>
+          <h2>Segmented Core</h2>
+          <p>Panel wedges split inward around a compact center.</p>
+        </article>
+        <article class="phase-card" data-phase-card="3">
+          <p class="phase-tag">Phase 3</p>
+          <h2>Twisted Lattice</h2>
+          <p>Inset wiring braces add more energy without changing shape.</p>
+        </article>
+        <article class="phase-card" data-phase-card="4">
+          <p class="phase-tag">Phase 4</p>
+          <h2>Reactor Grid</h2>
+          <p>Nested rings and mid-edge links create the densest read.</p>
+        </article>
+      </section>
+    </div>
+
+    <script type="module" src="/src/style-showcase.js"></script>
+  </body>
+</html>

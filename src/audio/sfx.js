@@ -3,7 +3,11 @@
 // (tap, mute toggle) calls initAudio() which creates the context and kicks
 // off loading + music playback.
 
-import musicUrl from './s-music.mp3?url';
+import { DEFAULT_THEME_ID, getTheme } from '../utils/colors.js';
+import music1Url from './s-music1.mp3?url';
+import music2Url from './s-music2.mp3?url';
+import music3Url from './s-music3.mp3?url';
+import music4Url from './s-music4.mp3?url';
 import turnwheelUrl from './s-turnwheel.mp3?url';
 import hexagonUrl from './s-hexagon.mp3?url';
 import hexagonNewUrl from './s-hexagonnew.mp3?url';
@@ -20,12 +24,37 @@ const SFX_URLS = {
 
 const SFX_VOLUME = 0.55;
 const MUSIC_VOLUME = 0.32;
+const MUSIC_URLS = {
+  arcade: music1Url,
+  reactor: music2Url,
+  void: music3Url,
+  solar: music4Url,
+};
 
 let ctx = null;
 let sfxGain = null;
 let muted = false;
 let music = null;
+let musicThemeId = DEFAULT_THEME_ID;
 const buffers = {};
+
+function normalizeThemeId(themeId) {
+  return getTheme(themeId).id;
+}
+
+function musicUrlForTheme(themeId) {
+  return MUSIC_URLS[normalizeThemeId(themeId)] ?? MUSIC_URLS[DEFAULT_THEME_ID];
+}
+
+function setMusicSource(themeId) {
+  musicThemeId = normalizeThemeId(themeId);
+  if (!music) return;
+  music.pause();
+  music.src = musicUrlForTheme(musicThemeId);
+  music.loop = true;
+  music.volume = muted ? 0 : MUSIC_VOLUME;
+  music.load();
+}
 
 async function decodeUrl(url) {
   const res = await fetch(url);
@@ -57,13 +86,21 @@ export function initAudio() {
         });
     }
 
-    music = new Audio(musicUrl);
-    music.loop = true;
-    music.volume = muted ? 0 : MUSIC_VOLUME;
+    music = new Audio();
+    music.preload = 'auto';
+    setMusicSource(musicThemeId);
     music.play().catch(() => {});
   } catch (e) {
     console.warn('AudioContext unavailable', e);
   }
+}
+
+export function setMusicTheme(themeId) {
+  const nextThemeId = normalizeThemeId(themeId);
+  if (musicThemeId === nextThemeId && music) return;
+  const shouldResume = Boolean(music && !music.paused && !muted);
+  setMusicSource(nextThemeId);
+  if (music && shouldResume && !muted) music.play().catch(() => {});
 }
 
 export function setMuted(next) {

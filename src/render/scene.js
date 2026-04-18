@@ -19,11 +19,11 @@ export function createScene() {
   return { scene, camera, boardGroup };
 }
 
-export function mountBoard(boardGroup, board) {
+export function mountBoard(boardGroup, board, { phase = 1 } = {}) {
   const triangleViews = {};
   for (const k of Object.keys(board)) {
     const t = board[k];
-    const view = new Triangle(t.col, t.row, t.color);
+    const view = new Triangle(t.col, t.row, t.color, { phase });
     triangleViews[k] = view;
     boardGroup.add(view.group);
   }

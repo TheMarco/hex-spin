@@ -13,7 +13,7 @@ The current code is the source of truth. If this file and the implementation div
 - **Vitest** — Node-environment tests for game logic and math utilities
 - **ESLint flat config** + **Prettier**
 - Plain JS modules, no TypeScript
-- **Sample-based audio**: WebAudio `AudioBufferSourceNode` playback for SFX plus one looped `HTMLAudioElement` for background music
+- **Sample-based audio**: WebAudio `AudioBufferSourceNode` playback for SFX plus one theme-selected looped `HTMLAudioElement` for background music
 
 Scripts:
 - `npm run dev` — Vite on `http://localhost:5173`
@@ -30,9 +30,12 @@ Scripts:
 ```text
 index.html          Canvas + HUD mount
 style.css           HUD styling, overlays, heat rail, mute button
+styles.html         Standalone phase-style showcase page
+style-showcase.css  Layout/styling for the showcase page
 vite.config.js      Vite + Vitest config and coverage thresholds
 src/
   main.js           Bootstrap: scene, board, input, HUD, audio, RAF loop
+  style-showcase.js Standalone renderer for the four phase inner-style samples with their fixed phase themes
   game/
     board.js        Hex board creation, phantom slot seeding, valid vertex checks
     rules.js        Completed-hex detection, cascade loop, scoring math
@@ -50,7 +53,10 @@ src/
   input/pointer.js  Pointer raycast against invisible hit-circle meshes
   audio/
     sfx.js          Sample-based audio loader/player and mute persistence
-    s-music.mp3
+    s-music1.mp3
+    s-music2.mp3
+    s-music3.mp3
+    s-music4.mp3
     s-turnwheel.mp3
     s-hexagon.mp3
     s-hexagonnew.mp3
@@ -62,7 +68,7 @@ src/
   utils/
     math.js         Board constants, ring geometry, vertex helpers, easings
     animate.js      `tween(durationMs, easing, onFrame)` helper
-    colors.js       Neon palette, dark fill variants, phase palettes, bonus color
+    colors.js       Theme registry, dark fill variants, phase palettes, bonus colors
 tests/
   board.test.js
   rules.test.js
@@ -166,8 +172,31 @@ Heat is the run timer in `src/game/state.js`.
   - `gameState.phase`
   - `gameState.activeColors`
 - Existing triangles are not recolored on phase change.
+- Existing triangles do restyle their **inner detail layer** on phase change.
 - The effect of a new phase is that future refills and future new boards can draw from a larger palette.
 - `PHASE_NEW_COLOR` marks the newly introduced color for bonus scoring in that phase.
+
+### Phase Themes
+
+- The game uses 4 fixed phase themes:
+  - phase 1 → `arcade`
+  - phase 2 → `reactor`
+  - phase 3 → `void`
+  - phase 4 → `solar`
+- A phase theme changes:
+  - board generation colors
+  - phantom slot seed colors
+  - background music track selection
+  - scene background color
+  - nebula and starfield color treatment
+  - vertex marker glow colors
+  - pulse and flash effect accents
+  - HUD, overlay, and control-panel chrome via CSS variables
+  - palette strip HUD colors
+  - heat bar highlight colors
+  - phase transition announcement colors
+  - the style showcase preview page
+- Theme changes are automatic on phase advance; there is no manual in-game theme picker.
 
 ---
 
@@ -190,11 +219,19 @@ Heat is the run timer in `src/game/state.js`.
   - a dark `MeshBasicMaterial` fill
   - a bright `Line2` outer outline
   - a dim `LineSegments` circuit/hull detail overlay
+- The outer fill and outline remain the same in every phase.
+- Only the inner detail layer changes by phase:
+  - phase 1: baseline PCB/chip seam
+  - phase 2: segmented core wedges
+  - phase 3: twisted lattice braces
+  - phase 4: dense reactor grid
 - `LineMaterial.resolution` must be updated on resize; all outline materials register in the shared `outlineMaterials` set.
 - `fitCamera()` in `main.js` pushes the camera back on narrow viewports so the board remains framed.
 - `background.js` builds the atmosphere:
   - 5 additive shader nebula planes that drift forward and fade across a z-cycle
   - 3500 stars in a custom shader-based forward-motion starfield with wrap fading and diffraction spikes on large stars
+- `styles.html` is a dedicated comparison page for these four inner styles and is included as a separate Vite build entry.
+- `styles.html` shows the fixed phase pairings directly rather than offering a manual theme picker.
 
 ---
 
@@ -202,18 +239,27 @@ Heat is the run timer in `src/game/state.js`.
 
 Audio is currently sample-based, not procedural.
 
-- `src/audio/sfx.js` imports six assets:
+- `src/audio/sfx.js` imports nine assets:
+  - `s-music1.mp3`
+  - `s-music2.mp3`
+  - `s-music3.mp3`
+  - `s-music4.mp3`
   - `s-turnwheel.mp3`
   - `s-hexagon.mp3`
   - `s-hexagonnew.mp3`
   - `s-levelup.mp3`
   - `s-gameover.mp3`
-  - `s-music.mp3`
 - `initAudio()` runs on the first user gesture:
   - creates an `AudioContext`
   - creates a gain node for SFX
   - asynchronously fetches and decodes SFX buffers
   - starts looped background music with `new Audio(...)`
+- Theme IDs map to music tracks:
+  - `arcade` → `s-music1.mp3`
+  - `reactor` → `s-music2.mp3`
+  - `void` → `s-music3.mp3`
+  - `solar` → `s-music4.mp3`
+- Phase changes swap the looped BGM track to the matching phase theme when audio is active.
 - Muted state persists in `localStorage` under `hexspin.muted`.
 - Active sound hooks:
   - `playSpin()` — plays the turnwheel sample
@@ -309,7 +355,7 @@ Implications:
 - **`effects.js` is legacy** and not part of the live gameplay path in `main.js`
 - **`vertexDots.update()` is currently a no-op**; the markers are static
 - **Audio is sample-based baseline behavior**. Do not describe it as procedural unless the implementation changes
-- **Background music is a large shipped asset** relative to the rest of the game; be deliberate before adding more media weight
+- **Background music is now four shipped assets** relative to the rest of the game; be deliberate before adding more media weight
 
 ---
 
@@ -326,7 +372,7 @@ Implications:
   - keep bloom layer usage intentional so the board stays readable
 - **Audio changes**
   - edit `src/audio/sfx.js`
-  - current baseline is sample playback, mute persistence, and looped BGM
+  - current baseline is sample playback, mute persistence, and phase-swapped looped BGM
 - **Board shape / size**
   - update `src/utils/math.js`
   - then verify `createBoard()` still converges without startup hexes

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DEFAULT_THEME_ID, getThemeVisuals } from '../utils/colors.js';
 
 // Deep-space backdrop: 5 volumetric nebula planes with FBM-noise color fields
 // sitting in the distance, and ~3500 stars flying toward the camera from a
@@ -12,13 +13,12 @@ export function createBackground({ scene }) {
   // =========================================================================
   // Nebula backdrop
   // =========================================================================
-  const nebulaMaterials = [];
   const nebulaConfigs = [
-    { x: -28, y: 14, z: -55, size: 60, colorA: [1.0, 0.35, 0.6], colorB: [0.3, 0.05, 0.4], seed: 1.7 },
-    { x: 30, y: -18, z: -70, size: 62, colorA: [0.2, 0.55, 1.0], colorB: [0.05, 0.1, 0.4], seed: 4.3 },
-    { x: -18, y: -22, z: -50, size: 48, colorA: [1.0, 0.7, 0.35], colorB: [0.32, 0.12, 0.05], seed: 2.9 },
-    { x: 32, y: 24, z: -82, size: 70, colorA: [0.62, 0.32, 1.0], colorB: [0.18, 0.05, 0.5], seed: 5.6 },
-    { x: 0, y: 4, z: -100, size: 95, colorA: [0.3, 0.9, 0.95], colorB: [0.05, 0.22, 0.42], seed: 3.1 },
+    { x: -28, y: 14, z: -55, size: 60, seed: 1.7 },
+    { x: 30, y: -18, z: -70, size: 62, seed: 4.3 },
+    { x: -18, y: -22, z: -50, size: 48, seed: 2.9 },
+    { x: 32, y: 24, z: -82, size: 70, seed: 5.6 },
+    { x: 0, y: 4, z: -100, size: 95, seed: 3.1 },
   ];
 
   const nebulaVertex = /* glsl */ `
@@ -95,8 +95,8 @@ export function createBackground({ scene }) {
     const mat = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uColorA: { value: new THREE.Vector3(...cfg.colorA) },
-        uColorB: { value: new THREE.Vector3(...cfg.colorB) },
+        uColorA: { value: new THREE.Vector3(1, 1, 1) },
+        uColorB: { value: new THREE.Vector3(0, 0, 0) },
         uSeed: { value: cfg.seed },
         uOpacity: { value: 1 },
       },
@@ -111,7 +111,6 @@ export function createBackground({ scene }) {
     mesh.position.set(cfg.x, cfg.y, cfg.z);
     mesh.renderOrder = -20;
     root.add(mesh);
-    nebulaMaterials.push(mat);
     // Each nebula's initial cycle phase matches its configured z, so the
     // scene opens with the configured layout and drifts from there.
     nebulaMeshes.push({ mesh, material: mat, initialPhase: cfg.z - NEB_Z_FAR });
@@ -130,19 +129,8 @@ export function createBackground({ scene }) {
   const sizes = new Float32Array(STAR_COUNT);
   const colors = new Float32Array(STAR_COUNT * 3);
   const phases = new Float32Array(STAR_COUNT);
-
-  // Mostly white; a minority of soft magical tints for variety.
-  const palette = [
-    new THREE.Color('#ffffff'),
-    new THREE.Color('#ffffff'),
-    new THREE.Color('#ffffff'),
-    new THREE.Color('#ffffff'),
-    new THREE.Color('#d0e4ff'), // pale blue
-    new THREE.Color('#e4d0ff'), // lavender
-    new THREE.Color('#d0ffee'), // icy mint
-    new THREE.Color('#ffdbb0'), // warm peach
-    new THREE.Color('#ffd0e0'), // rose
-  ];
+  const starBrightness = new Float32Array(STAR_COUNT);
+  const starPaletteIndex = new Uint8Array(STAR_COUNT);
 
   for (let i = 0; i < STAR_COUNT; i++) {
     positions[i * 3] = (Math.random() - 0.5) * 2 * SPREAD_XY;
@@ -157,11 +145,8 @@ export function createBackground({ scene }) {
     else size = 0.6 + Math.random() * 1.2;
     sizes[i] = size;
 
-    const color = palette[Math.floor(Math.random() * palette.length)];
-    const brightness = 0.6 + Math.random() * 0.4;
-    colors[i * 3] = color.r * brightness;
-    colors[i * 3 + 1] = color.g * brightness;
-    colors[i * 3 + 2] = color.b * brightness;
+    starPaletteIndex[i] = Math.floor(Math.random() * 7);
+    starBrightness[i] = 0.6 + Math.random() * 0.4;
 
     phases[i] = Math.random() * Math.PI * 2;
   }
@@ -254,6 +239,27 @@ export function createBackground({ scene }) {
   points.renderOrder = -10;
   root.add(points);
 
+  function applyTheme(themeId = DEFAULT_THEME_ID) {
+    const visuals = getThemeVisuals(themeId);
+    for (let i = 0; i < nebulaMeshes.length; i++) {
+      const colorsForNebula = visuals.nebulaColors[i];
+      nebulaMeshes[i].material.uniforms.uColorA.value.set(...colorsForNebula.colorA);
+      nebulaMeshes[i].material.uniforms.uColorB.value.set(...colorsForNebula.colorB);
+    }
+
+    const starPalette = visuals.starPalette.map((hex) => new THREE.Color(hex));
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const color = starPalette[starPaletteIndex[i] % starPalette.length];
+      const brightness = starBrightness[i];
+      colors[i * 3] = color.r * brightness;
+      colors[i * 3 + 1] = color.g * brightness;
+      colors[i * 3 + 2] = color.b * brightness;
+    }
+    geom.attributes.starColor.needsUpdate = true;
+  }
+
+  applyTheme();
+
   function update(timeMs) {
     const t = timeMs * 0.001;
     starMaterial.uniforms.uTime.value = t;
@@ -267,5 +273,5 @@ export function createBackground({ scene }) {
     }
   }
 
-  return { update };
+  return { update, setTheme: applyTheme };
 }

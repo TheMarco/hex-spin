@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { DEFAULT_THEME_ID, getThemeVisuals } from '../utils/colors.js';
 
 const BLOOM_LAYER = 1;
 
 export function createParticleSystem({ boardGroup }) {
   const live = [];
+  let themeVisuals = getThemeVisuals(DEFAULT_THEME_ID);
 
   const PARTICLE_SIZE = 0.07;
   const ph = (PARTICLE_SIZE * Math.sqrt(3)) / 2;
@@ -101,7 +103,7 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
-  function hexPulse(localX, localY, color) {
+  function hexPulse(localX, localY, color = themeVisuals.pulse) {
     // Thin hex-shaped shockwave, tight and quick.
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color),
@@ -127,7 +129,7 @@ export function createParticleSystem({ boardGroup }) {
 
     // Bright pinpoint flash at dead center
     const flashMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color('#ffffff'),
+      color: new THREE.Color(themeVisuals.flash),
       transparent: true,
       opacity: 1,
       depthWrite: false,
@@ -146,6 +148,10 @@ export function createParticleSystem({ boardGroup }) {
   // Legacy name, kept for compatibility with any other callers —
   // now resolves to hexPulse so "pulseRing" is still valid.
   const pulseRing = hexPulse;
+
+  function setTheme(themeId) {
+    themeVisuals = getThemeVisuals(themeId);
+  }
 
   function update(deltaMs) {
     const dt = deltaMs * 0.001;
@@ -202,5 +208,5 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
-  return { shatter, pulseRing, hexPulse, implode, update };
+  return { shatter, pulseRing, hexPulse, implode, update, setTheme };
 }

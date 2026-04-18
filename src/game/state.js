@@ -1,4 +1,4 @@
-import { PHASE_PALETTES } from '../utils/colors.js';
+import { getThemeIdForPhase, getThemePhasePalettes } from '../utils/colors.js';
 
 export const PHASE_THRESHOLDS = { 2: 11, 3: 26, 4: 51 };
 
@@ -21,6 +21,10 @@ export function drainMultiplierForPhase(phase) {
   return 1 + (phase - 1) * HEAT_PHASE_DRAIN_SCALE;
 }
 
+function activePalette(phase) {
+  return [...getThemePhasePalettes(getThemeIdForPhase(phase))[phase]];
+}
+
 export const gameState = {
   phase: 1,
   hexCount: 0,
@@ -30,7 +34,7 @@ export const gameState = {
   spins: 0,
   busy: false,
   status: 'idle',
-  activeColors: [...PHASE_PALETTES[1]],
+  activeColors: activePalette(1),
   heat: HEAT_START,
 };
 
@@ -43,7 +47,7 @@ export function resetGameState() {
   gameState.spins = 0;
   gameState.busy = false;
   gameState.status = 'idle';
-  gameState.activeColors = [...PHASE_PALETTES[1]];
+  gameState.activeColors = activePalette(1);
   gameState.heat = HEAT_START;
 }
 
@@ -56,7 +60,7 @@ export function nextPhaseFromHexCount(currentPhase, hexCount) {
 
 export function advancePhase(toPhase) {
   gameState.phase = toPhase;
-  gameState.activeColors = [...PHASE_PALETTES[toPhase]];
+  gameState.activeColors = activePalette(toPhase);
 }
 
 export async function withBusy(work) {

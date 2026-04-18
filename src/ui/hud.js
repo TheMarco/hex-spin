@@ -1,15 +1,6 @@
 import * as THREE from 'three';
-import { NEON } from '../utils/colors.js';
+import { getThemeHeatColors, getThemeIdForPhase, getThemePaletteOrder } from '../utils/colors.js';
 import { gameState } from '../game/state.js';
-
-const PALETTE_ORDER = [
-  NEON.magenta,
-  NEON.cyan,
-  NEON.yellow,
-  NEON.orange,
-  NEON.green,
-  NEON.blue,
-];
 
 export function createHUD({ container, camera }) {
   container.innerHTML = `
@@ -24,9 +15,7 @@ export function createHUD({ container, camera }) {
     <div class="hud-top-left">
       <div class="phase-label">PHASE <span data-phase>1</span></div>
       <div class="palette-strip">
-        ${PALETTE_ORDER.map(
-          (c, i) => `<span class="dot" data-slot="${i}" style="--c:${c}"></span>`
-        ).join('')}
+        ${Array.from({ length: 6 }, (_, i) => `<span class="dot" data-slot="${i}"></span>`).join('')}
       </div>
     </div>
     <div class="hud-top-center">
@@ -54,14 +43,18 @@ export function createHUD({ container, camera }) {
   const vignette = $('[data-vignette]');
 
   function refresh() {
+    const themeId = getThemeIdForPhase(gameState.phase);
+    const paletteOrder = getThemePaletteOrder(themeId);
     phaseEl.textContent = String(gameState.phase);
     scoreEl.textContent = gameState.score.toLocaleString();
     hexEl.textContent = String(gameState.hexCount);
     longestEl.textContent = String(gameState.longestCascade);
     cascadeEl.textContent = gameState.currentCascade > 1 ? `×${gameState.currentCascade}` : '';
     dotEls.forEach((el, i) => {
+      el.style.setProperty('--c', paletteOrder[i]);
       el.classList.toggle('active', i < gameState.activeColors.length);
     });
+    updateHeat(gameState.heat);
   }
 
   const tmpVec = new THREE.Vector3();
@@ -83,13 +76,14 @@ export function createHUD({ container, camera }) {
   }
 
   function updateHeat(heat) {
+    const heatColors = getThemeHeatColors(getThemeIdForPhase(gameState.phase));
     const clamped = Math.max(0, Math.min(1, heat));
     heatFill.style.width = `${clamped * 100}%`;
     heatPercent.textContent = `${Math.round(clamped * 100)}%`;
     let color;
-    if (heat > 0.5) color = NEON.cyan;
-    else if (heat > 0.3) color = NEON.yellow;
-    else color = NEON.magenta;
+    if (heat > 0.5) color = heatColors.high;
+    else if (heat > 0.3) color = heatColors.mid;
+    else color = heatColors.low;
     heatFill.style.background = color;
     heatFill.style.boxShadow = `0 0 8px ${color}, 0 0 20px ${color}`;
     heatPercent.style.color = color;

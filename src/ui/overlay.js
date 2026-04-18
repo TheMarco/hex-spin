@@ -1,12 +1,5 @@
-import { NEON } from '../utils/colors.js';
+import { getThemeIdForPhase, getThemeNewColor, getThemePaletteOrder } from '../utils/colors.js';
 import { gameState } from '../game/state.js';
-
-// Each phase announces itself in the color newly introduced at that phase.
-const PHASE_COLORS = {
-  2: NEON.orange,
-  3: NEON.green,
-  4: NEON.blue,
-};
 
 const PHASE_LOCK_MS = 1600;
 
@@ -24,7 +17,9 @@ export function createOverlay({ container, onPlayAgain }) {
 
     const announce = document.createElement('div');
     announce.className = 'phase-announce';
-    announce.style.color = PHASE_COLORS[newPhase] ?? NEON.cyan;
+    const themeId = getThemeIdForPhase(newPhase);
+    announce.style.color =
+      getThemeNewColor(themeId)[newPhase] ?? getThemePaletteOrder(themeId)[1];
     announce.textContent = `PHASE ${newPhase}`;
     container.appendChild(announce);
 

@@ -1,7 +1,13 @@
 import * as THREE from 'three';
 import { createScene, mountBoard, unmountBoard } from './render/scene.js';
 import { createBoard, createPhantomSlots } from './game/board.js';
-import { PHASE_PALETTES, PHASE_NEW_COLOR, NEW_COLOR_BONUS_MULT } from './utils/colors.js';
+import {
+  NEW_COLOR_BONUS_MULT,
+  getThemeCssVars,
+  getThemeIdForPhase,
+  getThemeNewColor,
+  getThemeVisuals,
+} from './utils/colors.js';
 import { setupPointer } from './input/pointer.js';
 import { spin } from './game/spin.js';
 import { refreshOutlineResolution } from './render/triangles.js';
@@ -28,6 +34,7 @@ import {
   playImplodeWhoosh,
   playPhaseTransitionSfx,
   playGameOver,
+  setMusicTheme,
   setMuted,
   isMuted,
 } from './audio/sfx.js';
@@ -36,9 +43,9 @@ const canvas = document.getElementById('scene');
 const hudContainer = document.getElementById('hud');
 
 const { scene, camera, boardGroup } = createScene();
-let board = createBoard(PHASE_PALETTES[1]);
-let phantomSlots = createPhantomSlots(board, PHASE_PALETTES[1]);
-let triangleViews = mountBoard(boardGroup, board);
+let board = createBoard(gameState.activeColors);
+let phantomSlots = createPhantomSlots(board, gameState.activeColors);
+let triangleViews = mountBoard(boardGroup, board, { phase: gameState.phase });
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -66,6 +73,26 @@ const background = createBackground({ scene });
 const hud = createHUD({ container: hudContainer, camera });
 const overlay = createOverlay({ container: hudContainer, onPlayAgain: resetRun });
 
+function applyThemePresentation(phase) {
+  const themeId = getThemeIdForPhase(phase);
+  const visuals = getThemeVisuals(themeId);
+  scene.background = new THREE.Color(visuals.sceneBg);
+  for (const [name, value] of Object.entries(getThemeCssVars(themeId))) {
+    document.documentElement.style.setProperty(name, value);
+  }
+  setMusicTheme(themeId);
+  background.setTheme(themeId);
+  particles.setTheme(themeId);
+  vertexDots.setTheme(themeId);
+  hud.refresh();
+}
+
+function applyTrianglePhaseStyle(phase) {
+  for (const view of Object.values(triangleViews)) {
+    view.setPhaseStyle?.(phase);
+  }
+}
+
 const cameraOrigin = camera.position.clone();
 let shakeAmp = 0;
 let shakeAge = 0;
@@ -87,7 +114,7 @@ const pointer = setupPointer({
 function handleTap(k, j) {
   initAudio();
   const [vx, vy] = vPos(k, j);
-  particles.pulseRing(vx, vy, '#ffffff');
+  particles.pulseRing(vx, vy);
   playSpin();
 
   spin({
@@ -100,7 +127,7 @@ function handleTap(k, j) {
     effects: particles,
     hooks: {
       onCascadeWave: ({ cascade, hexes, pointsPerHex }) => {
-        const newColor = PHASE_NEW_COLOR[gameState.phase];
+        const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
         let waveHasBonus = false;
         for (const h of hexes) {
           const bonus = Boolean(newColor && h.color === newColor);
@@ -123,6 +150,8 @@ function handleTap(k, j) {
         hud.refresh();
       },
       onPhaseChange: (newPhase) => {
+        applyThemePresentation(newPhase);
+        applyTrianglePhaseStyle(newPhase);
         addHeat(HEAT_PHASE_BONUS);
         hud.refresh();
         overlay.playPhaseTransition(newPhase);
@@ -135,11 +164,12 @@ function handleTap(k, j) {
 function resetRun() {
   unmountBoard(boardGroup, triangleViews);
   resetGameState();
-  board = createBoard(PHASE_PALETTES[1]);
-  phantomSlots = createPhantomSlots(board, PHASE_PALETTES[1]);
-  Object.assign(triangleViews, mountBoard(boardGroup, board));
+  board = createBoard(gameState.activeColors);
+  phantomSlots = createPhantomSlots(board, gameState.activeColors);
+  Object.assign(triangleViews, mountBoard(boardGroup, board, { phase: gameState.phase }));
   vertexDots.rebuild(board);
   pointer.rebuildHitCircles(board);
+  applyThemePresentation(gameState.phase);
   hud.refresh();
 }
 
@@ -157,10 +187,12 @@ window.addEventListener('resize', () => {
 const muteBtn = document.createElement('button');
 muteBtn.className = 'mute-btn';
 muteBtn.setAttribute('aria-label', 'Toggle sound');
+
 function renderMute() {
   muteBtn.textContent = isMuted() ? '♪  OFF' : '♪  ON';
   muteBtn.classList.toggle('muted', isMuted());
 }
+
 muteBtn.addEventListener('click', () => {
   initAudio();
   setMuted(!isMuted());
@@ -168,6 +200,7 @@ muteBtn.addEventListener('click', () => {
 });
 hudContainer.appendChild(muteBtn);
 renderMute();
+applyThemePresentation(gameState.phase);
 
 let lastFrameMs = performance.now();
 let paused = document.hidden;

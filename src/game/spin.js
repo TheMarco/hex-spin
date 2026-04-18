@@ -55,7 +55,7 @@ export async function spin({
 
     for (const sourceIdx of transition.ghostSourceIndices) {
       const slot = slots[sourceIdx];
-      const ghost = new Triangle(slot.cr[0], slot.cr[1], slot.color);
+      const ghost = new Triangle(slot.cr[0], slot.cr[1], slot.color, { phase: gameState.phase });
       boardGroup.add(ghost.group);
       pivot.attach(ghost.group);
       ghost.setOpacity(0);

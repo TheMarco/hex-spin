@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { vPos, ROWS, COLS } from '../utils/math.js';
 import { isValidVertex } from '../game/board.js';
+import { DEFAULT_THEME_ID, getThemeVisuals } from '../utils/colors.js';
 const BLOOM_LAYER = 1;
 
 // Tappable-vertex hinge: flat-top hex outline (vertices aligned with the 6
@@ -11,6 +12,7 @@ export function createVertexDots({ board: initialBoard, boardGroup }) {
   boardGroup.add(group);
   const dots = [];
   let board = initialBoard;
+  let themeVisuals = getThemeVisuals(DEFAULT_THEME_ID);
 
   const HEX_R = 0.1;
   const CORE_R = 0.042;
@@ -61,7 +63,7 @@ export function createVertexDots({ board: initialBoard, boardGroup }) {
         const [x, y, z] = vPos(k, j);
 
         const hexMat = new THREE.LineBasicMaterial({
-          color: new THREE.Color('#ffffff'),
+          color: new THREE.Color(themeVisuals.vertex),
           transparent: true,
           opacity: 0.95,
           depthTest: false,
@@ -73,7 +75,7 @@ export function createVertexDots({ board: initialBoard, boardGroup }) {
         hex.layers.set(BLOOM_LAYER);
 
         const spokesMat = new THREE.LineBasicMaterial({
-          color: new THREE.Color('#ffffff'),
+          color: new THREE.Color(themeVisuals.vertex),
           transparent: true,
           opacity: 0.85,
           depthTest: false,
@@ -85,7 +87,7 @@ export function createVertexDots({ board: initialBoard, boardGroup }) {
         spokes.layers.set(BLOOM_LAYER);
 
         const coreMat = new THREE.MeshBasicMaterial({
-          color: new THREE.Color('#ffffff'),
+          color: new THREE.Color(themeVisuals.vertexCore),
           transparent: true,
           opacity: 1,
           depthTest: false,
@@ -108,7 +110,12 @@ export function createVertexDots({ board: initialBoard, boardGroup }) {
     }
   }
 
+  function setTheme(themeId) {
+    themeVisuals = getThemeVisuals(themeId);
+    rebuild();
+  }
+
   rebuild();
 
-  return { rebuild, update: () => {} };
+  return { rebuild, setTheme, update: () => {} };
 }

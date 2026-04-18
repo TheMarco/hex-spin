@@ -6,6 +6,7 @@ import {
   nextPhaseFromHexCount,
   advancePhase,
 } from '../src/game/state.js';
+import { getThemeIdForPhase, getThemePhasePalettes } from '../src/utils/colors.js';
 
 beforeEach(() => resetGameState());
 
@@ -77,5 +78,29 @@ describe('advancePhase', () => {
     expect(gameState.activeColors).toHaveLength(5);
     advancePhase(4);
     expect(gameState.activeColors).toHaveLength(6);
+  });
+});
+
+describe('phase-driven themes', () => {
+  it('maps each phase to its fixed theme', () => {
+    expect(getThemeIdForPhase(1)).toBe('arcade');
+    expect(getThemeIdForPhase(2)).toBe('reactor');
+    expect(getThemeIdForPhase(3)).toBe('void');
+    expect(getThemeIdForPhase(4)).toBe('solar');
+  });
+
+  it('advancePhase switches active colors to that phase theme palette', () => {
+    advancePhase(2);
+    expect(gameState.activeColors).toEqual(getThemePhasePalettes(getThemeIdForPhase(2))[2]);
+
+    advancePhase(4);
+    expect(gameState.activeColors).toEqual(getThemePhasePalettes(getThemeIdForPhase(4))[4]);
+  });
+
+  it('resetGameState restores the phase 1 theme palette', () => {
+    advancePhase(4);
+    resetGameState();
+    expect(gameState.phase).toBe(1);
+    expect(gameState.activeColors).toEqual(getThemePhasePalettes(getThemeIdForPhase(1))[1]);
   });
 });
