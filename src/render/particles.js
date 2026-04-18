@@ -33,8 +33,27 @@ export function createParticleSystem({ boardGroup }) {
   const hexRingGeom = new THREE.RingGeometry(0.92, 1.02, 6);
   hexRingGeom.rotateZ(Math.PI / 2);
 
-  // Tiny bright flash at hex center — replaces the old expanding circle.
-  const flashGeom = new THREE.CircleGeometry(0.18, 24);
+  // 4-point sparkle star: 4 long spikes + pinched waist between them.
+  const sparkGeom = (() => {
+    const geom = new THREE.BufferGeometry();
+    const spikeLong = 0.09;
+    const core = 0.012;
+    const pts = [];
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      const r = i % 2 === 0 ? spikeLong : core;
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    pts.push([0, 0]);
+    const centerIdx = 8;
+    const positions = [];
+    for (const [x, y] of pts) positions.push(x, y, 0);
+    const indices = [];
+    for (let i = 0; i < 8; i++) indices.push(centerIdx, i, (i + 1) % 8);
+    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geom.setIndex(indices);
+    return geom;
+  })();
 
   function removeLiveParticle(particle, index) {
     boardGroup.remove(particle);
@@ -111,6 +130,44 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
+  function sparkle(localX, localY, color, count = 24) {
+    const base = new THREE.Color(color);
+    const white = new THREE.Color('#ffffff');
+    for (let i = 0; i < count; i++) {
+      const tint = base.clone().lerp(white, 0.35 + Math.random() * 0.55);
+      const mat = new THREE.MeshBasicMaterial({
+        color: tint,
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const m = new THREE.Mesh(sparkGeom, mat);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.1 + Math.random() * 2.4;
+      const baseScale = 0.55 + Math.random() * 1.1;
+      m.position.set(localX, localY, 0.06);
+      m.rotation.z = Math.random() * Math.PI * 2;
+      m.scale.setScalar(baseScale);
+      m.layers.set(BLOOM_LAYER);
+      m.renderOrder = 7;
+      m.userData = {
+        kind: 'sparkle',
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        vRot: (Math.random() - 0.5) * 5,
+        drag: 3.2 + Math.random() * 2.2,
+        twinkleSpeed: 14 + Math.random() * 22,
+        twinklePhase: Math.random() * Math.PI * 2,
+        baseScale,
+        age: 0,
+        lifeMs: 720 + Math.random() * 420,
+      };
+      boardGroup.add(m);
+      live.push(m);
+    }
+  }
+
   function hexPulse(localX, localY, color = themeVisuals.pulse) {
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color),
@@ -135,21 +192,7 @@ export function createParticleSystem({ boardGroup }) {
     boardGroup.add(ring);
     live.push(ring);
 
-    const flashMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(themeVisuals.flash),
-      transparent: true,
-      opacity: 1,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-    const flash = new THREE.Mesh(flashGeom, flashMat);
-    flash.position.set(localX, localY, 0.05);
-    flash.scale.setScalar(0.35);
-    flash.layers.set(BLOOM_LAYER);
-    flash.renderOrder = 7;
-    flash.userData = { kind: 'flash', age: 0, lifeMs: 260, maxScale: 2.2 };
-    boardGroup.add(flash);
-    live.push(flash);
+    sparkle(localX, localY, color, 26);
   }
 
   // Legacy name, kept for compatibility with any other callers —
@@ -178,11 +221,21 @@ export function createParticleSystem({ boardGroup }) {
           p.material.opacity = (1 - eased) * (p.userData.peakOpacity ?? 0.9);
           break;
         }
-        case 'flash': {
-          const peak = p.userData.maxScale ?? 1.2;
-          const s = 0.35 + t * (peak - 0.35);
-          p.scale.set(s, s, 1);
-          p.material.opacity = 1 - Math.pow(t, 2);
+        case 'sparkle': {
+          const dragMul = Math.exp(-p.userData.drag * dt);
+          p.userData.vx *= dragMul;
+          p.userData.vy *= dragMul;
+          p.position.x += p.userData.vx * dt;
+          p.position.y += p.userData.vy * dt;
+          p.rotation.z += p.userData.vRot * dt;
+          const twinkle =
+            0.45 +
+            0.55 *
+              Math.abs(Math.sin(p.userData.age * 0.001 * p.userData.twinkleSpeed + p.userData.twinklePhase));
+          const fade = Math.pow(1 - t, 1.6);
+          p.material.opacity = twinkle * fade;
+          const s = p.userData.baseScale * (1 - t * 0.35);
+          p.scale.setScalar(s);
           break;
         }
         case 'implode': {
@@ -215,6 +268,7 @@ export function createParticleSystem({ boardGroup }) {
 
   return {
     shatter,
+    sparkle,
     pulseRing,
     hexPulse,
     implode,

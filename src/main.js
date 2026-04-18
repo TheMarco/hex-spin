@@ -40,6 +40,7 @@ import {
   setMuted,
   isMuted,
 } from './audio/sfx.js';
+import logoUrl from './images/logo.jpg';
 
 const canvas = document.getElementById('scene');
 const hudContainer = document.getElementById('hud');
@@ -215,6 +216,29 @@ muteBtn.addEventListener('click', () => {
 hudContainer.appendChild(muteBtn);
 renderMute();
 applyThemePresentation(gameState.phase);
+
+function showTitleScreen() {
+  gameState.status = 'title';
+  const el = document.createElement('div');
+  el.className = 'title-screen';
+  el.innerHTML = `
+    <div class="title-inner">
+      <img class="title-logo" src="${logoUrl}" alt="Hex Spin" />
+      <div class="title-start">Click or tap to start</div>
+    </div>
+    <div class="title-footer">Copyright 2026 \u00A9 AI &amp; Design Game Studios</div>
+  `;
+  hudContainer.appendChild(el);
+  const dismiss = () => {
+    el.removeEventListener('pointerdown', dismiss);
+    el.classList.add('dismissed');
+    setTimeout(() => el.remove(), 400);
+    gameState.status = 'idle';
+    initAudio();
+  };
+  el.addEventListener('pointerdown', dismiss);
+}
+showTitleScreen();
 
 let lastFrameMs = performance.now();
 let paused = document.hidden;

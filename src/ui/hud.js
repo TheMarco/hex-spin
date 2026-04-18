@@ -5,26 +5,31 @@ import { gameState } from '../game/state.js';
 export function createHUD({ container, camera }) {
   container.innerHTML = `
     <div class="heat-rail" data-heat-rail>
-      <div class="heat-label">HEAT</div>
+      <div class="heat-label">[ HEAT ]</div>
       <div class="heat-track">
         <div class="heat-fill" data-heat-fill></div>
       </div>
       <div class="heat-percent" data-heat-percent>100%</div>
     </div>
     <div class="danger-vignette" data-vignette></div>
-    <div class="hud-top-left">
-      <div class="phase-label">PHASE <span data-phase>1</span></div>
-      <div class="palette-strip">
-        ${Array.from({ length: 6 }, (_, i) => `<span class="dot" data-slot="${i}"></span>`).join('')}
+    <div class="hud-row">
+      <div class="hud-top-left">
+        <div class="hud-kicker">[ PHASE ]</div>
+        <div class="phase-value" data-phase>1</div>
+        <div class="palette-strip">
+          ${Array.from({ length: 6 }, (_, i) => `<span class="dot" data-slot="${i}"></span>`).join('')}
+        </div>
       </div>
-    </div>
-    <div class="hud-top-center">
-      <div class="score" data-score>0</div>
-    </div>
-    <div class="hud-top-right">
-      <div class="hex-count"><span data-hex>0</span> hexes</div>
-      <div class="cascade-mult" data-cascade></div>
-      <div class="longest-cascade">Longest: <span data-longest>0</span></div>
+      <div class="hud-top-center">
+        <div class="hud-kicker">[ SCORE ]</div>
+        <div class="score" data-score>0</div>
+        <div class="cascade-mult" data-cascade></div>
+      </div>
+      <div class="hud-top-right">
+        <div class="hud-kicker">[ HEXES ]</div>
+        <div class="hex-value" data-hex>0</div>
+        <div class="hud-sub">Longest <span class="hud-sub-accent">×<span data-longest>0</span></span></div>
+      </div>
     </div>
     <div class="float-layer" data-floats></div>
   `;
@@ -84,10 +89,10 @@ export function createHUD({ container, camera }) {
     if (heat > 0.5) color = heatColors.high;
     else if (heat > 0.3) color = heatColors.mid;
     else color = heatColors.low;
-    heatFill.style.background = color;
-    heatFill.style.boxShadow = `0 0 8px ${color}, 0 0 20px ${color}`;
+    heatFill.style.color = color;
     heatPercent.style.color = color;
     heatPercent.style.textShadow = `0 0 6px ${color}`;
+    heatRail.style.setProperty('--heat-color', color);
     heatRail.classList.toggle('danger', heat < 0.3);
     vignette.classList.toggle('active', heat < 0.3);
   }
