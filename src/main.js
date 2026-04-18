@@ -69,12 +69,23 @@ camera.layers.enable(1);
 const BOARD_WIDTH = 6; // flat-top hex, 2 * HEX_SIDE
 const BOARD_FIT_MARGIN = 1.08; // 8% breathing room
 const BASE_CAMERA_Z = camera.position.z;
+const BASE_CAMERA_Y = camera.position.y;
+// HUD footprint (heat rail + panels) in CSS pixels. Used to recenter the
+// playfield in the available space below the HUD by panning the camera.
+const HUD_BOTTOM_PX = 140;
+const HUD_BOTTOM_PX_MOBILE = 118;
 function fitCamera(w, h) {
   const aspect = w / h;
   camera.aspect = aspect;
   const fovRad = (camera.fov * Math.PI) / 180;
-  const minZ = (BOARD_WIDTH * BOARD_FIT_MARGIN) / (2 * aspect * Math.tan(fovRad / 2));
+  const tanHalf = Math.tan(fovRad / 2);
+  const minZ = (BOARD_WIDTH * BOARD_FIT_MARGIN) / (2 * aspect * tanHalf);
   camera.position.z = Math.max(BASE_CAMERA_Z, minZ);
+
+  const hudPx = w < 720 ? HUD_BOTTOM_PX_MOBILE : HUD_BOTTOM_PX;
+  const pan = (hudPx / h) * camera.position.z * tanHalf;
+  camera.position.y = BASE_CAMERA_Y + pan;
+  camera.lookAt(0, pan, 0);
   camera.updateProjectionMatrix();
 }
 fitCamera(window.innerWidth, window.innerHeight);
