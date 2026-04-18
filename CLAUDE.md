@@ -290,6 +290,7 @@ Audio is currently sample-based, not procedural.
 - `pointer.js` only calls `onTap` when the pointer hits one of those valid vertex circles
 - `rebuildHitCircles(newBoard)` is called on run reset
 - Input concurrency is gated by `gameState.busy` through `withBusy()` in `spin.js`
+- `P` on the keyboard (or the pause button next to the mute toggle) pauses and resumes the run; `handleTap` ignores input while paused
 - Important current behavior:
   - `main.js::handleTap()` triggers local visual feedback (`hexPulse`) and `playSpin()` before `spin()` has a chance to reject the move
   - as a result, taps during `busy` or `phase_transition` can still produce local feedback even when they do not mutate game state
@@ -308,8 +309,12 @@ Current values used in runtime code:
 - `idle`
 - `phase_transition`
 - `game_over`
+- `paused`
+- `title` (only set by the title screen in `main.js`)
 
 There are no explicit `spinning` or `resolving` status values in the current implementation.
+
+`paused` is set by the user-facing pause toggle (the `P` key or the pause button next to the mute button). `spin()` rejects taps while `status === 'paused'`, heat drain pauses (because `drainHeat` requires `status === 'idle'`), and the RAF loop short-circuits so particles/background/heat do not advance. Toggling back to `idle` resets `lastFrameMs` so no large delta bursts through on resume.
 
 ### `gameState.busy`
 

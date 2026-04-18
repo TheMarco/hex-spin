@@ -810,10 +810,10 @@ body {
 }
 
 /* Mute toggle */
-.mute-btn {
+.mute-btn,
+.pause-btn {
   position: fixed;
   bottom: 16px;
-  right: 16px;
   z-index: 50;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 50%, transparent);
@@ -827,7 +827,14 @@ body {
   transition: background 200ms ease, border-color 200ms ease;
   pointer-events: auto;
 }
-.mute-btn:hover {
+.mute-btn {
+  right: 16px;
+}
+.pause-btn {
+  right: 108px;
+}
+.mute-btn:hover,
+.pause-btn:hover {
   background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
   border-color: var(--ui-accent);
 }
@@ -835,4 +842,83 @@ body {
   color: var(--text-dim);
   border-color: color-mix(in srgb, var(--text-dim) 65%, transparent);
   text-shadow: none;
+}
+.pause-btn.paused {
+  color: var(--ui-secondary);
+  border-color: color-mix(in srgb, var(--ui-secondary) 70%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ui-secondary) 75%, transparent);
+}
+
+/* Pause overlay */
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: pause-fade 220ms ease-out;
+}
+@keyframes pause-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.pause-card {
+  position: relative;
+  text-align: center;
+  padding: 34px 58px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ui-accent) 14%, rgba(0, 0, 0, 0.92)) 0%,
+      color-mix(in srgb, var(--ui-accent) 4%, rgba(0, 0, 0, 0.96)) 100%
+    );
+  border-top: 2px solid var(--ui-accent);
+  border-bottom: 2px solid var(--ui-accent);
+  box-shadow:
+    inset 0 0 24px color-mix(in srgb, var(--ui-accent) 20%, transparent),
+    0 0 14px color-mix(in srgb, var(--ui-accent) 60%, transparent),
+    0 0 40px color-mix(in srgb, var(--ui-accent) 28%, transparent);
+}
+.pause-card::before,
+.pause-card::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--ui-accent);
+  border-style: solid;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ui-accent) 85%, transparent);
+  pointer-events: none;
+}
+.pause-card::before {
+  top: -2px;
+  left: -2px;
+  border-width: 3px 0 0 3px;
+}
+.pause-card::after {
+  bottom: -2px;
+  right: -2px;
+  border-width: 0 3px 3px 0;
+}
+.pause-title {
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  font-size: clamp(48px, 10vw, 96px);
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  color: #ffffff;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 14px color-mix(in srgb, var(--ui-accent) 90%, transparent),
+    0 0 32px color-mix(in srgb, var(--ui-accent) 60%, transparent);
+}
+.pause-hint {
+  margin-top: 14px;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--text-dim);
+  text-transform: uppercase;
 }

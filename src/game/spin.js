@@ -22,6 +22,7 @@ export async function spin({
 }) {
   if (gameState.status === 'game_over') return false;
   if (gameState.status === 'phase_transition') return false;
+  if (gameState.status === 'paused') return false;
   if (!isValidVertex(k, j, board)) return false;
 
   const result = await withBusy(async () => {

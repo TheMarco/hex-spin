@@ -154,6 +154,7 @@ async function repaintBoardForPhase(newPhase) {
 }
 
 function handleTap(k, j) {
+  if (isPaused()) return;
   initAudio();
 
   spin({
@@ -227,6 +228,18 @@ window.addEventListener('resize', () => {
   refreshOutlineResolution(w, h);
 });
 
+let lastFrameMs = performance.now();
+let visibilityPaused = document.hidden;
+let userPaused = false;
+function isPaused() {
+  return visibilityPaused || userPaused;
+}
+document.addEventListener('visibilitychange', () => {
+  const wasPaused = isPaused();
+  visibilityPaused = document.hidden;
+  if (wasPaused && !isPaused()) lastFrameMs = performance.now();
+});
+
 // Mute button
 const muteBtn = document.createElement('button');
 muteBtn.className = 'mute-btn';
@@ -244,6 +257,61 @@ muteBtn.addEventListener('click', () => {
 });
 hudContainer.appendChild(muteBtn);
 renderMute();
+
+// Pause button + overlay
+const pauseBtn = document.createElement('button');
+pauseBtn.className = 'pause-btn';
+pauseBtn.setAttribute('aria-label', 'Pause');
+
+const pauseOverlay = document.createElement('div');
+pauseOverlay.className = 'pause-overlay';
+pauseOverlay.innerHTML = `
+  <div class="pause-card">
+    <div class="pause-title">PAUSED</div>
+    <div class="pause-hint">Press P or click to resume</div>
+  </div>
+`;
+
+function renderPauseBtn() {
+  pauseBtn.textContent = userPaused ? '▶  RESUME' : '❚❚ PAUSE';
+  pauseBtn.classList.toggle('paused', userPaused);
+}
+
+function showPauseOverlay() {
+  if (!pauseOverlay.isConnected) hudContainer.appendChild(pauseOverlay);
+}
+function hidePauseOverlay() {
+  if (pauseOverlay.isConnected) pauseOverlay.remove();
+}
+
+function togglePause() {
+  if (gameState.status !== 'idle' && gameState.status !== 'paused') return;
+  const wasPaused = isPaused();
+  userPaused = !userPaused;
+  if (userPaused) {
+    gameState.status = 'paused';
+    showPauseOverlay();
+  } else {
+    gameState.status = 'idle';
+    hidePauseOverlay();
+  }
+  if (wasPaused && !isPaused()) lastFrameMs = performance.now();
+  renderPauseBtn();
+}
+
+pauseBtn.addEventListener('click', togglePause);
+pauseOverlay.addEventListener('pointerdown', togglePause);
+hudContainer.appendChild(pauseBtn);
+renderPauseBtn();
+
+window.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'p' && ev.key !== 'P') return;
+  if (ev.repeat) return;
+  const target = ev.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+  togglePause();
+});
+
 applyThemePresentation(gameState.phase);
 
 function showTitleScreen() {
@@ -269,15 +337,8 @@ function showTitleScreen() {
 }
 showTitleScreen();
 
-let lastFrameMs = performance.now();
-let paused = document.hidden;
-document.addEventListener('visibilitychange', () => {
-  paused = document.hidden;
-  if (!paused) lastFrameMs = performance.now();
-});
-
 function frame(timeMs) {
-  if (paused) {
+  if (isPaused()) {
     requestAnimationFrame(frame);
     return;
   }
