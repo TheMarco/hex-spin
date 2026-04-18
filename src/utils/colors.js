@@ -26,9 +26,8 @@ export const DARK = {
   '#F15BB5': '#24081B',
   '#FEE440': '#262208',
   '#06D6A0': '#012018',
-  // Phase 3 (void — aurora)
+  // Phase 3 (void — aurora) — shares '#3A86FF' with phase 1
   '#9B5DE5': '#160E23',
-  '#00BBF9': '#001C26',
   '#00F5D4': '#002420',
 };
 
@@ -58,7 +57,7 @@ const THEME_DEFS = {
     label: 'Deep Void',
     shortLabel: 'VOID',
     phase: 3,
-    ordered: ['#FEE440', '#F15BB5', '#9B5DE5', '#00BBF9', '#00F5D4'],
+    ordered: ['#FEE440', '#F15BB5', '#9B5DE5', '#3A86FF', '#00F5D4'],
     newColor: '#9B5DE5',
   },
   solar: {
