@@ -141,12 +141,16 @@ plans/              Scratch notes, not imported into runtime code
 ### Scoring
 
 ```text
-pointsPerHex = 100 × 2^(phase - 1) × 2^(cascade - 1) × m
+pointsPerHex = 100 × freshMult × 2^(phase - 1) × 2^(cascade - 1) × m
+freshMult    = 1 + clamp(1000 − 100·(spinsSinceLastClear − 1), 100, 1000) / 1000
 ```
 
 - `m` is the number of hexes completed in that wave.
 - `computeWaveScore()` returns the per-hex payout, not the whole-wave payout.
 - Because `m` is already folded into `pointsPerHex`, total wave payout scales quadratically with simultaneous clears before bonuses.
+- `freshMult` rewards fast hits: 2.0× on the first spin after the last clear, decaying by 0.1× per spin to a 1.1× floor at spin 10+.
+- Freshness is locked at the start of each cascade so every wave from a single tap shares the same bonus tier.
+- `gameState.spinsSinceLastClear` increments on every spin and resets to 0 after any cascade that clears at least one hex (and on new run).
 - In `src/main.js`, each cleared hex gets an additional `NEW_COLOR_BONUS_MULT = 2` if its color matches `PHASE_NEW_COLOR[gameState.phase]`.
 - Floating score numbers are spawned per cleared hex in screen space via the HUD.
 
@@ -244,7 +248,7 @@ Heat is the run timer in `src/game/state.js`.
 
 Audio is currently sample-based, not procedural.
 
-- `src/audio/sfx.js` imports nine assets:
+- `src/audio/sfx.js` imports ten assets:
   - `s-music1.mp3`
   - `s-music2.mp3`
   - `s-music3.mp3`
@@ -252,6 +256,7 @@ Audio is currently sample-based, not procedural.
   - `s-turnwheel.mp3`
   - `s-hexagon.mp3`
   - `s-hexagonnew.mp3`
+  - `s-extrabonus.mp3`
   - `s-levelup.mp3`
   - `s-gameover.mp3`
 - `initAudio()` runs on the first user gesture:
@@ -269,6 +274,7 @@ Audio is currently sample-based, not procedural.
 - Active sound hooks:
   - `playSpin()` — plays the turnwheel sample
   - `playHexClear(cascade, { bonus })` — pitch-shifts the clear sample by cascade depth and uses an alternate sample for bonus-color clears
+  - `playExtraBonus({ cascade, freshMult })` — layers `s-extrabonus.mp3` over cascade waves 2+ (and on the hottest fresh-hit wave-1 clears) with pitch climbing in 3-semitone steps; deep chains also trigger a delayed perfect-fifth echo
   - `playPhaseTransitionSfx()` — plays the level-up sample
   - `playGameOver()` — plays the game-over sample
 - Current no-ops:

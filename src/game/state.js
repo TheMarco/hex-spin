@@ -17,8 +17,20 @@ export const HEAT_HEX_BASE = 0.18;
 export const HEAT_PHASE_BONUS = 0.4;
 export const HEAT_DANGER = 0.3;
 
+// Freshness multiplier — rewards fast hits. Reset after any cascade that clears.
+// Scales score from 2.0× (first spin after last clear) down to 1.1× (10+ spins).
+export const FRESH_BONUS_MAX = 1000;
+export const FRESH_BONUS_MIN = 100;
+export const FRESH_BONUS_STEP = 100;
+
 export function drainMultiplierForPhase(phase) {
   return 1 + (phase - 1) * HEAT_PHASE_DRAIN_SCALE;
+}
+
+export function freshnessMultiplier(spinsSinceLastClear) {
+  const raw = FRESH_BONUS_MAX - FRESH_BONUS_STEP * (spinsSinceLastClear - 1);
+  const bonus = Math.max(FRESH_BONUS_MIN, Math.min(FRESH_BONUS_MAX, raw));
+  return 1 + bonus / 1000;
 }
 
 function activePalette(phase) {
@@ -32,6 +44,7 @@ export const gameState = {
   longestCascade: 0,
   currentCascade: 0,
   spins: 0,
+  spinsSinceLastClear: 0,
   busy: false,
   status: 'idle',
   activeColors: activePalette(1),
@@ -45,6 +58,7 @@ export function resetGameState() {
   gameState.longestCascade = 0;
   gameState.currentCascade = 0;
   gameState.spins = 0;
+  gameState.spinsSinceLastClear = 0;
   gameState.busy = false;
   gameState.status = 'idle';
   gameState.activeColors = activePalette(1);

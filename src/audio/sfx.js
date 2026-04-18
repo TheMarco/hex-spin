@@ -11,6 +11,7 @@ import music4Url from './s-music4.mp3?url';
 import turnwheelUrl from './s-turnwheel.mp3?url';
 import hexagonUrl from './s-hexagon.mp3?url';
 import hexagonNewUrl from './s-hexagonnew.mp3?url';
+import extrabonusUrl from './s-extrabonus.mp3?url';
 import levelupUrl from './s-levelup.mp3?url';
 import gameoverUrl from './s-gameover.mp3?url';
 
@@ -18,6 +19,7 @@ const SFX_URLS = {
   turnwheel: turnwheelUrl,
   hexagon: hexagonUrl,
   hexagonnew: hexagonNewUrl,
+  extrabonus: extrabonusUrl,
   levelup: levelupUrl,
   gameover: gameoverUrl,
 };
@@ -122,7 +124,7 @@ export function isMuted() {
   return muted;
 }
 
-function playBuffer(key, { rate = 1, volume = 1 } = {}) {
+function playBuffer(key, { rate = 1, volume = 1, delay = 0 } = {}) {
   if (!ctx || !buffers[key]) return;
   const src = ctx.createBufferSource();
   src.buffer = buffers[key];
@@ -130,7 +132,7 @@ function playBuffer(key, { rate = 1, volume = 1 } = {}) {
   const g = ctx.createGain();
   g.gain.value = volume;
   src.connect(g).connect(sfxGain);
-  src.start();
+  src.start(delay > 0 ? ctx.currentTime + delay : 0);
 }
 
 export function playSpin() {
@@ -143,6 +145,31 @@ export function playSpin() {
 export function playHexClear(cascade = 1, { bonus = false } = {}) {
   const rate = Math.min(1 + (cascade - 1) * 0.08, 1.5);
   playBuffer(bonus ? 'hexagonnew' : 'hexagon', { rate });
+}
+
+// Extra-bonus layer. Plays on cascade waves 2+ and on the hottest fresh-hit
+// clears — stacks over the normal hex clear to reward the chain. Pitch climbs
+// in minor-third steps per extra wave (a 3-semitone ladder) and every third
+// step gets a delayed echo a perfect fifth up so deep chains sound like a
+// chord blooming open.
+const SEMITONE = Math.pow(2, 1 / 12);
+export function playExtraBonus({ cascade = 1, freshMult = 1 } = {}) {
+  const chainStep = Math.max(0, cascade - 1); // 0 for fresh-hit trigger, 1+ for cascades
+  const freshStep = freshMult >= 1.8 && cascade === 1 ? 1 : 0; // brightest fresh hit also pings
+  const step = chainStep + freshStep;
+  if (step <= 0) return;
+  const cappedStep = Math.min(step, 5);
+  const rate = Math.pow(SEMITONE, cappedStep * 3);
+  const volume = Math.min(1, 0.7 + cappedStep * 0.08);
+  playBuffer('extrabonus', { rate, volume });
+  if (cappedStep >= 3) {
+    // Blooming echo a perfect fifth above, delayed ~90ms.
+    playBuffer('extrabonus', {
+      rate: rate * Math.pow(SEMITONE, 7),
+      volume: volume * 0.65,
+      delay: 0.09,
+    });
+  }
 }
 
 // The hexagon sample now covers the impact — old synth whoosh is retired.

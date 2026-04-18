@@ -35,6 +35,7 @@ import {
   playHexClear,
   playImplodeWhoosh,
   playPhaseTransitionSfx,
+  playExtraBonus,
   playGameOver,
   setMusicTheme,
   setMuted,
@@ -167,7 +168,7 @@ function handleTap(k, j) {
       onSpinStart: () => {
         playSpin();
       },
-      onCascadeWave: ({ cascade, hexes, pointsPerHex }) => {
+      onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
         const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
         let waveHasBonus = false;
         for (const h of hexes) {
@@ -187,6 +188,7 @@ function handleTap(k, j) {
         addHeat(heatGainFromWave(hexes.length));
         playImplodeWhoosh();
         playHexClear(cascade, { bonus: waveHasBonus });
+        playExtraBonus({ cascade, freshMult });
         if (cascade >= 2) shake(0.03 * cascade, 300);
         hud.refresh();
       },

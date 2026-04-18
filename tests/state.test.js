@@ -17,6 +17,7 @@ describe('gameState defaults', () => {
     expect(gameState.score).toBe(0);
     expect(gameState.longestCascade).toBe(0);
     expect(gameState.currentCascade).toBe(0);
+    expect(gameState.spinsSinceLastClear).toBe(0);
     expect(gameState.busy).toBe(false);
     expect(gameState.status).toBe('idle');
   });

@@ -148,6 +148,7 @@ export async function spin({
     }
 
     gameState.spins++;
+    gameState.spinsSinceLastClear++;
 
     await resolveCompletions({
       board,

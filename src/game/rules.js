@@ -1,11 +1,12 @@
 import { ROWS, COLS, ring, isRealVertex, key, vPos } from '../utils/math.js';
-import { gameState, nextPhaseFromHexCount, advancePhase } from './state.js';
+import { gameState, nextPhaseFromHexCount, advancePhase, freshnessMultiplier } from './state.js';
 
 export const MAX_CASCADE = 50;
 
-// Spec §5 scoring: 100 × 2^(phase-1) × 2^(cascade-1) × m
-export function computeWaveScore(phase, cascade, m) {
-  return 100 * Math.pow(2, phase - 1) * Math.pow(2, cascade - 1) * m;
+// Scoring: 100 × freshMult × 2^(phase-1) × 2^(cascade-1) × m
+// freshMult rewards fast hits (2.0× on first spin after last clear → 1.1× floor).
+export function computeWaveScore(phase, cascade, m, freshMult = 1) {
+  return 100 * freshMult * Math.pow(2, phase - 1) * Math.pow(2, cascade - 1) * m;
 }
 
 export function findCompletedHexes(board) {
@@ -44,6 +45,9 @@ export async function resolveCompletions(ctx) {
 
   let cascade = 0;
   let totalHexes = 0;
+  // Freshness is locked at the start of the tap's cascade so every wave from
+  // this spin shares the same bonus (spec: one fresh tap, one reward tier).
+  const freshMult = freshnessMultiplier(gameState.spinsSinceLastClear);
 
   while (true) {
     const done = findCompletedHexes(board);
@@ -57,8 +61,8 @@ export async function resolveCompletions(ctx) {
     }
     totalHexes += done.length;
 
-    const pointsPerHex = computeWaveScore(gameState.phase, cascade, done.length);
-    if (onCascadeWave) onCascadeWave({ cascade, hexes: done, pointsPerHex });
+    const pointsPerHex = computeWaveScore(gameState.phase, cascade, done.length, freshMult);
+    if (onCascadeWave) onCascadeWave({ cascade, hexes: done, pointsPerHex, freshMult });
 
     const affectedKeys = new Set();
     for (const d of done) for (const [c, r] of d.ts) affectedKeys.add(key(c, r));
@@ -85,6 +89,10 @@ export async function resolveCompletions(ctx) {
 
     await Promise.all(affected.map((k) => triangleViews[k].fade?.(1, 260)));
   }
+
+  // Reset the freshness counter when this tap cleared anything — next spin
+  // starts a new run-up.
+  if (totalHexes > 0) gameState.spinsSinceLastClear = 0;
 
   // Phase advance after cascade fully resolves so player isn't interrupted.
   const next = nextPhaseFromHexCount(gameState.phase, gameState.hexCount);
