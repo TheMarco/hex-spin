@@ -138,6 +138,20 @@ const pointer = setupPointer({
   onTap: handleTap,
 });
 
+async function repaintBoardForPhase(newPhase) {
+  const palette = gameState.activeColors;
+  await Promise.all(Object.values(triangleViews).map((v) => v.fade?.(0, 260)));
+  applyTrianglePhaseStyle(newPhase);
+  const fresh = createBoard(palette);
+  for (const k of Object.keys(board)) {
+    const c = fresh[k].color;
+    board[k].color = c;
+    triangleViews[k].setColor(c);
+  }
+  phantomSlots = createPhantomSlots(board, palette);
+  await Promise.all(Object.values(triangleViews).map((v) => v.fade?.(1, 320)));
+}
+
 function handleTap(k, j) {
   initAudio();
   playSpin();
@@ -174,13 +188,13 @@ function handleTap(k, j) {
         if (cascade >= 2) shake(0.03 * cascade, 300);
         hud.refresh();
       },
-      onPhaseChange: (newPhase) => {
+      onPhaseChange: async (newPhase) => {
         applyThemePresentation(newPhase);
-        applyTrianglePhaseStyle(newPhase);
         addHeat(HEAT_PHASE_BONUS);
         hud.refresh();
         overlay.playPhaseTransition(newPhase);
         playPhaseTransitionSfx(newPhase);
+        await repaintBoardForPhase(newPhase);
       },
     },
   });
