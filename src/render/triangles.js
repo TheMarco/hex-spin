@@ -34,6 +34,48 @@ function mixPoint(a, b, t) {
   ];
 }
 
+function addVec(a, b) {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function subVec(a, b) {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+function centroidOf(corners) {
+  return [
+    (corners[0][0] + corners[1][0] + corners[2][0]) / 3,
+    (corners[0][1] + corners[1][1] + corners[2][1]) / 3,
+    (corners[0][2] + corners[1][2] + corners[2][2]) / 3,
+  ];
+}
+
+function perpOffset(a, b, length) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len = Math.hypot(dx, dy) || 1;
+  return [(-dy / len) * length, (dx / len) * length, 0];
+}
+
+function polygonPoints(center, radius, sides, rotation = 0) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = rotation + (i * 2 * Math.PI) / sides;
+    pts.push([
+      center[0] + Math.cos(a) * radius,
+      center[1] + Math.sin(a) * radius,
+      center[2],
+    ]);
+  }
+  return pts;
+}
+
+function radialPoint(from, center, distance) {
+  const dir = subVec(center, from);
+  const len = Math.hypot(dir[0], dir[1]) || 1;
+  return [from[0] + (dir[0] / len) * distance, from[1] + (dir[1] / len) * distance, from[2]];
+}
+
 function pushSegment(segments, a, b) {
   segments.push(...a, ...b);
 }
@@ -55,14 +97,14 @@ function detailIntensityForPhase(phase) {
 
 function createDetailGeometry(outerCorners, phase) {
   const panelCorners = scaledCorners(outerCorners, PANEL_SCALE);
-  const latticeCorners = scaledCorners(outerCorners, 0.5);
-  const coreCorners = scaledCorners(outerCorners, NODE_SCALE);
   const segments = [];
+  const center = centroidOf(panelCorners);
 
   switch (phase) {
     case 2: {
       // Segmented control-panel look: same outer panel seam, but with
       // medians carving the face into three wedges around a compact core.
+      const coreCorners = scaledCorners(outerCorners, NODE_SCALE);
       pushLoop(segments, panelCorners);
       pushLoop(segments, coreCorners);
       for (let i = 0; i < panelCorners.length; i++) {
@@ -76,31 +118,52 @@ function createDetailGeometry(outerCorners, phase) {
       break;
     }
     case 3: {
-      // Twisted lattice: a second inset triangle and offset braces that make
-      // the interior feel more energized without changing the silhouette.
+      // Faceted armored plating: twin parallel hull trim with clean radial
+      // panel seams and matching side seams — stealth-fighter vibe.
       pushLoop(segments, panelCorners);
-      pushLoop(segments, latticeCorners);
-      for (let i = 0; i < panelCorners.length; i++) {
-        pushSegment(segments, panelCorners[i], latticeCorners[(i + 1) % latticeCorners.length]);
+      const inner = scaledCorners(outerCorners, 0.46);
+      pushLoop(segments, inner);
+      for (let i = 0; i < 3; i++) {
+        // Radial corner seam (straight, aligned — not twisted).
+        pushSegment(segments, panelCorners[i], inner[i]);
+        // Parallel side-panel seam between outer and inner edge midpoints.
+        const outerMid = mixPoint(panelCorners[i], panelCorners[(i + 1) % 3], 0.5);
+        const innerMid = mixPoint(inner[i], inner[(i + 1) % 3], 0.5);
+        pushSegment(segments, outerMid, innerMid);
+        // Short inward tick on the inner edge mid — armor overlap detail.
+        const innerTick = radialPoint(innerMid, center, 0.1);
+        pushSegment(segments, innerMid, innerTick);
       }
       break;
     }
     case 4: {
-      // Reactor core: nested rings and mid-edge links create the densest
-      // interior pattern of the run while keeping the outside identical.
+      // Reactor hull: double trim, hex core vent, radial struts with clamps,
+      // and a micro vent inside the reactor — the busiest, most ship-like.
       pushLoop(segments, panelCorners);
-      pushLoop(segments, latticeCorners);
-      pushLoop(segments, coreCorners);
-      for (let i = 0; i < panelCorners.length; i++) {
-        const edgeMid = mixPoint(panelCorners[i], panelCorners[(i + 1) % panelCorners.length], 0.5);
-        pushSegment(segments, edgeMid, latticeCorners[i]);
-        pushSegment(segments, latticeCorners[i], coreCorners[(i + 1) % coreCorners.length]);
+      const inner = scaledCorners(outerCorners, 0.52);
+      pushLoop(segments, inner);
+      const reactor = polygonPoints(center, 0.2, 6, 0);
+      pushLoop(segments, reactor);
+      pushLoop(segments, polygonPoints(center, 0.08, 6, Math.PI / 6));
+      for (let i = 0; i < 3; i++) {
+        // Radial strut from hull corner to inner ring.
+        pushSegment(segments, panelCorners[i], inner[i]);
+        const strutMid = mixPoint(panelCorners[i], inner[i], 0.55);
+        const perp = perpOffset(panelCorners[i], inner[i], 0.07);
+        pushSegment(segments, subVec(strutMid, perp), addVec(strutMid, perp));
+        // Short radial feed from inner corner in toward the reactor hex.
+        pushSegment(segments, inner[i], radialPoint(inner[i], center, 0.22));
+        // Side seam between outer and inner edge midpoints.
+        const outerMid = mixPoint(panelCorners[i], panelCorners[(i + 1) % 3], 0.5);
+        const innerMid = mixPoint(inner[i], inner[(i + 1) % 3], 0.5);
+        pushSegment(segments, outerMid, innerMid);
       }
       break;
     }
     case 1:
     default: {
       // Baseline PCB/chip read from the current implementation.
+      const coreCorners = scaledCorners(outerCorners, NODE_SCALE);
       pushLoop(segments, panelCorners);
       pushLoop(segments, coreCorners);
       for (let i = 0; i < panelCorners.length; i++) {
