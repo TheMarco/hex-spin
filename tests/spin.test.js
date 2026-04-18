@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { shiftColorsCW } from '../src/game/spin.js';
+import { ring } from '../src/utils/math.js';
+import { buildSpinSlots, planClockwiseSpin, shiftColorsCW } from '../src/game/spin-model.js';
 
 describe('shiftColorsCW', () => {
   it('CW shift: slot i receives color from slot (i+5)%6 — i.e. previous N→NE', () => {
@@ -29,5 +30,79 @@ describe('shiftColorsCW', () => {
     const input = ['A', 'B', 'C', 'D', 'E', 'F'];
     shiftColorsCW(input);
     expect(input).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
+  });
+});
+
+describe('buildSpinSlots', () => {
+  it('builds mixed real/phantom descriptors from board + phantom map', () => {
+    const ts = ring(2, 1);
+    const board = {
+      '2,0': { color: 'A' },
+      '2,1': { color: 'B' },
+      '0,1': { color: 'C' },
+    };
+    const phantomMap = { 0: 'P0', 3: 'P3', 5: 'P5' };
+
+    expect(buildSpinSlots(ts, board, phantomMap)).toEqual([
+      { type: 'phantom', idx: 0, cr: [1, 0], color: 'P0' },
+      { type: 'real', idx: 1, tKey: '2,0', cr: [2, 0], color: 'A' },
+      { type: 'real', idx: 2, tKey: '2,1', cr: [2, 1], color: 'B' },
+      { type: 'phantom', idx: 3, cr: [1, 1], color: 'P3' },
+      { type: 'real', idx: 4, tKey: '0,1', cr: [0, 1], color: 'C' },
+      { type: 'phantom', idx: 5, cr: [0, 0], color: 'P5' },
+    ]);
+  });
+});
+
+describe('planClockwiseSpin', () => {
+  it('describes entering ghosts, exiting reals, and carry targets at the boundary', () => {
+    const slots = buildSpinSlots(
+      ring(2, 1),
+      {
+        '2,0': { color: 'A' },
+        '2,1': { color: 'B' },
+        '0,1': { color: 'C' },
+      },
+      { 0: 'P0', 3: 'P3', 5: 'P5' }
+    );
+
+    expect(planClockwiseSpin(slots)).toEqual({
+      ghostSourceIndices: [0, 3, 5],
+      fadeInGhostIndices: [0, 3],
+      exitingRealKeys: ['2,1', '0,1'],
+      remapRealTargets: [
+        { targetKey: '2,0', sourceIdx: 0, sourceType: 'phantom', sourceKey: null, color: 'P0' },
+        { targetKey: '2,1', sourceIdx: 1, sourceType: 'real', sourceKey: '2,0', color: 'A' },
+        { targetKey: '0,1', sourceIdx: 3, sourceType: 'phantom', sourceKey: null, color: 'P3' },
+      ],
+      phantomAssignments: [
+        { targetIdx: 3, color: 'B' },
+        { targetIdx: 5, color: 'C' },
+        { targetIdx: 0, color: 'P5' },
+      ],
+    });
+  });
+
+  it('stays entirely on-board for interior rings', () => {
+    const ts = ring(6, 3);
+    const board = Object.fromEntries(
+      ts.map(([c, r], idx) => [`${c},${r}`, { color: String.fromCharCode(65 + idx) }])
+    );
+    const slots = buildSpinSlots(ts, board);
+
+    expect(planClockwiseSpin(slots)).toEqual({
+      ghostSourceIndices: [],
+      fadeInGhostIndices: [],
+      exitingRealKeys: [],
+      remapRealTargets: [
+        { targetKey: '6,2', sourceIdx: 0, sourceType: 'real', sourceKey: '5,2', color: 'A' },
+        { targetKey: '6,3', sourceIdx: 1, sourceType: 'real', sourceKey: '6,2', color: 'B' },
+        { targetKey: '5,3', sourceIdx: 2, sourceType: 'real', sourceKey: '6,3', color: 'C' },
+        { targetKey: '4,3', sourceIdx: 3, sourceType: 'real', sourceKey: '5,3', color: 'D' },
+        { targetKey: '4,2', sourceIdx: 4, sourceType: 'real', sourceKey: '4,3', color: 'E' },
+        { targetKey: '5,2', sourceIdx: 5, sourceType: 'real', sourceKey: '4,2', color: 'F' },
+      ],
+      phantomAssignments: [],
+    });
   });
 });

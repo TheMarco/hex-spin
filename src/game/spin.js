@@ -4,12 +4,10 @@ import { isValidVertex } from './board.js';
 import { tween } from '../utils/animate.js';
 import { gameState, withBusy } from './state.js';
 import { resolveCompletions } from './rules.js';
+import { buildSpinSlots, planClockwiseSpin } from './spin-model.js';
 import { Triangle } from '../render/triangles.js';
 
-// CW shift: slot i receives the color that was in slot (i+5)%6.
-export function shiftColorsCW(colors) {
-  return colors.map((_, i) => colors[(i + 5) % colors.length]);
-}
+export { shiftColorsCW } from './spin-model.js';
 
 export async function spin({
   k,
@@ -31,15 +29,8 @@ export async function spin({
     const [vx, vy] = vPos(k, j);
     const vertexKey = key(k, j);
     const phantomMap = phantomSlots?.[vertexKey];
-
-    // Build 6-slot descriptor: each slot is either a real triangle or a
-    // phantom sitting in the hidden buffer for this vertex.
-    const slots = ts.map(([c, r], idx) => {
-      const tKey = key(c, r);
-      const t = board[tKey];
-      if (t) return { type: 'real', idx, tKey, cr: [c, r], color: t.color };
-      return { type: 'phantom', idx, cr: [c, r], color: phantomMap ? phantomMap[idx] : undefined };
-    });
+    const slots = buildSpinSlots(ts, board, phantomMap);
+    const transition = planClockwiseSpin(slots);
 
     // Pivot rotation. Real triangles rotate physically; phantom slots get a
     // temporary "ghost" Triangle rendered at the off-board position carrying
@@ -60,24 +51,20 @@ export async function spin({
     const fadeInGhosts = [];
     const fadeOutReals = [];
     const ghostByIdx = new Map();
+    const fadeInGhostIdxSet = new Set(transition.fadeInGhostIndices);
 
-    for (const s of slots) {
-      const targetIdx = (s.idx + 1) % 6;
-      const target = slots[targetIdx];
-
-      if (s.type === 'phantom') {
-        if (s.color === undefined) continue;
-        const ghost = new Triangle(s.cr[0], s.cr[1], s.color);
-        boardGroup.add(ghost.group);
-        pivot.attach(ghost.group);
-        ghost.setOpacity(0);
-        ghostByIdx.set(s.idx, ghost);
-        if (target.type === 'real') fadeInGhosts.push(ghost);
-        // phantom→phantom: leave at opacity 0 forever (will be disposed)
-      } else if (target.type === 'phantom') {
-        // Real triangle about to exit the hex boundary.
-        fadeOutReals.push(triangleViews[s.tKey]);
-      }
+    for (const sourceIdx of transition.ghostSourceIndices) {
+      const slot = slots[sourceIdx];
+      const ghost = new Triangle(slot.cr[0], slot.cr[1], slot.color);
+      boardGroup.add(ghost.group);
+      pivot.attach(ghost.group);
+      ghost.setOpacity(0);
+      ghostByIdx.set(sourceIdx, ghost);
+      if (fadeInGhostIdxSet.has(sourceIdx)) fadeInGhosts.push(ghost);
+      // phantom→phantom: leave at opacity 0 forever (will be disposed)
+    }
+    for (const tKey of transition.exitingRealKeys) {
+      fadeOutReals.push(triangleViews[tKey]);
     }
 
     await tween(340, 'easeInOutCubic', (eased) => {
@@ -96,25 +83,24 @@ export async function spin({
       for (const g of realGroups) boardGroup.attach(g);
 
       // Dispose reals that exited the hex (real → phantom target).
-      for (let i = 0; i < 6; i++) {
-        const s = slots[i];
-        const t = slots[(i + 1) % 6];
-        if (s.type === 'real' && t.type === 'phantom') {
-          const view = triangleViews[s.tKey];
-          view.group.parent?.remove(view.group);
-          view.dispose();
-        }
+      for (const tKey of transition.exitingRealKeys) {
+        const view = triangleViews[tKey];
+        view.group.parent?.remove(view.group);
+        view.dispose();
       }
 
       // Promote ghosts landing on real slots; dispose the rest.
       const promoted = new Map();
-      for (let i = 0; i < 6; i++) {
-        const ghost = ghostByIdx.get(i);
-        if (!ghost) continue;
-        const t = slots[(i + 1) % 6];
-        if (t.type === 'real') {
+      const promotedTargetsBySource = new Map(
+        transition.remapRealTargets
+          .filter((target) => target.sourceType === 'phantom')
+          .map((target) => [target.sourceIdx, target.targetKey])
+      );
+      for (const [sourceIdx, ghost] of ghostByIdx) {
+        const targetKey = promotedTargetsBySource.get(sourceIdx);
+        if (targetKey) {
           boardGroup.attach(ghost.group);
-          promoted.set(t.tKey, ghost);
+          promoted.set(targetKey, ghost);
         } else {
           ghost.group.parent?.remove(ghost.group);
           ghost.dispose();
@@ -125,26 +111,22 @@ export async function spin({
 
       // Rebuild the ring's triangleViews entries in-place.
       const remapped = {};
-      for (let i = 0; i < 6; i++) {
-        const s = slots[i];
-        const t = slots[(i + 1) % 6];
-        if (t.type !== 'real') continue;
-        remapped[t.tKey] =
-          s.type === 'real' ? triangleViews[s.tKey] : promoted.get(t.tKey);
+      for (const target of transition.remapRealTargets) {
+        remapped[target.targetKey] =
+          target.sourceType === 'real' ? triangleViews[target.sourceKey] : promoted.get(target.targetKey);
       }
-      for (let i = 0; i < 6; i++) {
-        if (slots[i].type === 'real') delete triangleViews[slots[i].tKey];
+      for (const slot of slots) {
+        if (slot.type === 'real') delete triangleViews[slot.tKey];
       }
       Object.assign(triangleViews, remapped);
 
       // Update the logical board + phantom buffer to match the carry.
-      for (let i = 0; i < 6; i++) {
-        const s = slots[i];
-        const t = slots[(i + 1) % 6];
-        if (t.type === 'real') {
-          if (s.color !== undefined) board[t.tKey].color = s.color;
-        } else if (phantomMap) {
-          phantomMap[t.idx] = s.color;
+      for (const target of transition.remapRealTargets) {
+        if (target.color !== undefined) board[target.targetKey].color = target.color;
+      }
+      if (phantomMap) {
+        for (const assignment of transition.phantomAssignments) {
+          phantomMap[assignment.targetIdx] = assignment.color;
         }
       }
     } else {
