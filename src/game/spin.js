@@ -25,6 +25,7 @@ export async function spin({
   if (!isValidVertex(k, j, board)) return false;
 
   const result = await withBusy(async () => {
+    hooks?.onSpinStart?.({ k, j });
     const ts = ring(k, j);
     const [vx, vy] = vPos(k, j);
     const vertexKey = key(k, j);

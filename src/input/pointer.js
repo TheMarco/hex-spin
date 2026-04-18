@@ -4,6 +4,21 @@ import { isValidVertex } from '../game/board.js';
 
 const HIT_RADIUS = 0.4;
 
+// Clockwise-rotate SVG cursor, white with black outline for legibility on any
+// background. 28px, hotspot centered.
+const ROTATE_CURSOR_SVG =
+  "<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'>" +
+  "<g stroke='black' stroke-width='4.5'>" +
+  "<polyline points='22 4 22 10 16 10'/>" +
+  "<path d='M20 14.5a8.5 8.5 0 1 1 -2 -8.9L22 10'/>" +
+  '</g>' +
+  "<g stroke='white' stroke-width='2.5'>" +
+  "<polyline points='22 4 22 10 16 10'/>" +
+  "<path d='M20 14.5a8.5 8.5 0 1 1 -2 -8.9L22 10'/>" +
+  '</g>' +
+  '</svg>';
+const ROTATE_CURSOR = `url("data:image/svg+xml;utf8,${encodeURIComponent(ROTATE_CURSOR_SVG)}") 14 14, pointer`;
+
 export function setupPointer({ canvas, camera, board: initialBoard, boardGroup, onTap }) {
   const hitGroup = new THREE.Group();
   boardGroup.add(hitGroup);
@@ -55,12 +70,23 @@ export function setupPointer({ canvas, camera, board: initialBoard, boardGroup, 
     if (v) onTap(v.k, v.j);
   }
 
+  let cursorHinting = false;
+  function onPointerMove(ev) {
+    if (ev.pointerType === 'touch') return;
+    const hovering = Boolean(pointerToVertex(ev));
+    if (hovering === cursorHinting) return;
+    cursorHinting = hovering;
+    canvas.style.cursor = hovering ? ROTATE_CURSOR : '';
+  }
+
   canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
 
   return {
     rebuildHitCircles,
     dispose() {
       canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
       hitGeom.dispose();
       hitMaterial.dispose();
     },

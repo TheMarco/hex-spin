@@ -154,7 +154,6 @@ async function repaintBoardForPhase(newPhase) {
 
 function handleTap(k, j) {
   initAudio();
-  playSpin();
 
   spin({
     k,
@@ -165,6 +164,9 @@ function handleTap(k, j) {
     triangleViews,
     effects: particles,
     hooks: {
+      onSpinStart: () => {
+        playSpin();
+      },
       onCascadeWave: ({ cascade, hexes, pointsPerHex }) => {
         const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
         let waveHasBonus = false;

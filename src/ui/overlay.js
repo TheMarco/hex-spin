@@ -38,14 +38,24 @@ export function createOverlay({ container, onPlayAgain }) {
     el.className = 'gameover';
     el.innerHTML = `
       <div class="gameover-card">
-        <div class="gameover-title">─── RUN COMPLETE ───</div>
-        <table class="gameover-stats">
-          <tr><td>Score</td><td>${gameState.score.toLocaleString()}</td></tr>
-          <tr><td>Phase reached</td><td>${gameState.phase}</td></tr>
-          <tr><td>Hexes cleared</td><td>${gameState.hexCount}</td></tr>
-          <tr><td>Longest cascade</td><td>${gameState.longestCascade}</td></tr>
-        </table>
-        <button class="play-again">[ PLAY AGAIN ]</button>
+        <div class="gameover-kicker">[ RUN COMPLETE ]</div>
+        <div class="gameover-score-label">FINAL SCORE</div>
+        <div class="gameover-score">${gameState.score.toLocaleString()}</div>
+        <div class="gameover-stats-grid">
+          <div class="gameover-stat">
+            <div class="gameover-stat-label">Phase</div>
+            <div class="gameover-stat-value">${gameState.phase}</div>
+          </div>
+          <div class="gameover-stat">
+            <div class="gameover-stat-label">Hexes</div>
+            <div class="gameover-stat-value">${gameState.hexCount}</div>
+          </div>
+          <div class="gameover-stat">
+            <div class="gameover-stat-label">Longest</div>
+            <div class="gameover-stat-value">×${gameState.longestCascade}</div>
+          </div>
+        </div>
+        <button class="play-again">PLAY AGAIN</button>
       </div>
     `;
     container.appendChild(el);
