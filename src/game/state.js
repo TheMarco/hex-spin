@@ -63,6 +63,15 @@ export function advancePhase(toPhase) {
   gameState.activeColors = activePalette(toPhase);
 }
 
+// Jump the run state to the start of a given phase. Used by the ?phase= URL param.
+// Sets hexCount to the entry threshold so natural progression to the next phase still works.
+export function setInitialPhase(toPhase) {
+  const clamped = Math.max(1, Math.min(4, Math.floor(toPhase)));
+  gameState.phase = clamped;
+  gameState.activeColors = activePalette(clamped);
+  gameState.hexCount = clamped === 1 ? 0 : PHASE_THRESHOLDS[clamped];
+}
+
 export async function withBusy(work) {
   if (gameState.busy) return null;
   gameState.busy = true;

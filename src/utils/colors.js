@@ -1,60 +1,73 @@
-// Default arcade palette retained as the baseline theme.
+// Each theme owns the palette for its phase. Phase 4 needs maximum
+// hue spread for 6-way readability; earlier phases can lean into cohesive
+// moods since fewer colors is easier to distinguish.
 export const NEON = {
-  magenta: '#FF00A8',
-  cyan: '#00F5FF',
-  yellow: '#E8FF1A',
-  orange: '#FF6A00',
-  green: '#39FF14',
-  blue: '#2D7FFF',
+  magenta: '#FF2BD6',
+  orange: '#FF7A00',
+  yellow: '#F5FF00',
+  green: '#00FF66',
+  cyan: '#00E5FF',
+  purple: '#8B2CFF',
 };
 
-// Exact dark variants preserved for the original/default colors.
 export const DARK = {
-  '#FF00A8': '#260019',
-  '#00F5FF': '#002526',
-  '#E8FF1A': '#232604',
-  '#FF6A00': '#261000',
-  '#39FF14': '#092603',
-  '#2D7FFF': '#071326',
+  // Phase 4 (solar)
+  '#FF2BD6': '#260620',
+  '#FF7A00': '#261200',
+  '#F5FF00': '#242600',
+  '#00FF66': '#00260F',
+  '#00E5FF': '#002226',
+  '#8B2CFF': '#140626',
+  // Phase 1 (arcade — synthwave sunset)
+  '#FF006E': '#260011',
+  '#8338EC': '#130823',
+  '#3A86FF': '#081426',
+  // Phase 2 (reactor — candy pop)
+  '#F15BB5': '#24081B',
+  '#FEE440': '#262208',
+  '#06D6A0': '#012018',
+  // Phase 3 (void — aurora)
+  '#9B5DE5': '#160E23',
+  '#00BBF9': '#001C26',
+  '#00F5D4': '#002420',
 };
 
 export const STONE_FILL = '#2A2A2A';
 export const STONE_OUTLINE = '#555555';
 export const BG = '#000000';
 
-const DEFAULT_ORDERED = [
-  NEON.magenta,
-  NEON.cyan,
-  NEON.yellow,
-  NEON.orange,
-  NEON.green,
-  NEON.blue,
-];
-
 const THEME_DEFS = {
   arcade: {
     id: 'arcade',
     label: 'Arcade Neon',
     shortLabel: 'ARC',
-    ordered: DEFAULT_ORDERED,
+    phase: 1,
+    ordered: ['#FF006E', '#8338EC', '#3A86FF'],
+    newColor: null,
   },
   reactor: {
     id: 'reactor',
     label: 'Toxic Reactor',
     shortLabel: 'TOX',
-    ordered: ['#B7FF00', '#00FFC6', '#00B3FF', '#FFD400', '#FF6A00', '#FF3D81'],
+    phase: 2,
+    ordered: ['#F15BB5', '#FEE440', '#3A86FF', '#06D6A0'],
+    newColor: '#06D6A0',
   },
   void: {
     id: 'void',
     label: 'Deep Void',
     shortLabel: 'VOID',
-    ordered: ['#7A5CFF', '#00C2FF', '#19F0C1', '#FF4D6D', '#FFB703', '#E0FF4F'],
+    phase: 3,
+    ordered: ['#FEE440', '#F15BB5', '#9B5DE5', '#00BBF9', '#00F5D4'],
+    newColor: '#9B5DE5',
   },
   solar: {
     id: 'solar',
     label: 'Solar Burn',
     shortLabel: 'SOL',
-    ordered: ['#FF3B30', '#FF7A00', '#FFD60A', '#7DFF5A', '#00D4FF', '#B266FF'],
+    phase: 4,
+    ordered: [NEON.magenta, NEON.orange, NEON.yellow, NEON.green, NEON.cyan, NEON.purple],
+    newColor: NEON.purple,
   },
 };
 
@@ -66,21 +79,12 @@ export const PHASE_THEME_IDS = {
   4: 'solar',
 };
 
-function buildPhasePalettes(ordered) {
-  return {
-    1: ordered.slice(0, 3),
-    2: ordered.slice(0, 4),
-    3: ordered.slice(0, 5),
-    4: ordered.slice(0, 6),
-  };
+function buildPhasePalettes(theme) {
+  return { [theme.phase]: [...theme.ordered] };
 }
 
-function buildPhaseNewColor(ordered) {
-  return {
-    2: ordered[3],
-    3: ordered[4],
-    4: ordered[5],
-  };
+function buildPhaseNewColor(theme) {
+  return theme.newColor ? { [theme.phase]: theme.newColor } : {};
 }
 
 function deriveHeatColors(ordered) {
@@ -201,8 +205,8 @@ export const THEMES = Object.fromEntries(
     id,
     {
       ...theme,
-      phasePalettes: buildPhasePalettes(theme.ordered),
-      phaseNewColor: buildPhaseNewColor(theme.ordered),
+      phasePalettes: buildPhasePalettes(theme),
+      phaseNewColor: buildPhaseNewColor(theme),
       heatColors: deriveHeatColors(theme.ordered),
       visuals: buildThemeVisuals(theme.ordered),
     },

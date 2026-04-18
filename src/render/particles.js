@@ -36,8 +36,16 @@ export function createParticleSystem({ boardGroup }) {
   // Tiny bright flash at hex center — replaces the old expanding circle.
   const flashGeom = new THREE.CircleGeometry(0.18, 24);
 
+  function removeLiveParticle(particle, index) {
+    boardGroup.remove(particle);
+    particle.material?.dispose?.();
+    if (particle.userData.disposeGeometry) {
+      particle.geometry?.dispose?.();
+    }
+    live.splice(index, 1);
+  }
+
   function shatter(localX, localY, color, count = 6) {
-    // Subtle outward burst — smaller, fewer, shorter-lived than the implosion.
     const c = new THREE.Color(color);
     for (let i = 0; i < count; i++) {
       const mat = new THREE.MeshBasicMaterial({
@@ -49,17 +57,17 @@ export function createParticleSystem({ boardGroup }) {
       });
       const m = new THREE.Mesh(triGeom, mat);
       m.position.set(localX, localY, 0.05);
-      m.scale.setScalar(0.6);
+      m.scale.setScalar(0.8);
       m.layers.set(BLOOM_LAYER);
       const angle = Math.random() * Math.PI * 2;
-      const speed = 0.8 + Math.random() * 1.0;
+      const speed = 1.3 + Math.random() * 1.6;
       m.userData = {
         kind: 'shatter',
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed + Math.random() * 0.3,
-        vRot: (Math.random() - 0.5) * 8,
+        vy: Math.sin(angle) * speed + Math.random() * 0.4,
+        vRot: (Math.random() - 0.5) * 10,
         age: 0,
-        lifeMs: 480,
+        lifeMs: 640,
       };
       boardGroup.add(m);
       live.push(m);
@@ -68,11 +76,11 @@ export function createParticleSystem({ boardGroup }) {
 
   // Particles rush in from outside the hex toward its center, accelerating.
   // This is the primary "pop" for hex completion.
-  function implode(localX, localY, color, count = 28) {
+  function implode(localX, localY, color, count = 42) {
     const c = new THREE.Color(color);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
-      const dist = 1.35 + Math.random() * 0.5;
+      const dist = 1.65 + Math.random() * 0.75;
       const startX = localX + Math.cos(angle) * dist;
       const startY = localY + Math.sin(angle) * dist;
 
@@ -94,9 +102,9 @@ export function createParticleSystem({ boardGroup }) {
         startY,
         targetX: localX,
         targetY: localY,
-        vRot: (Math.random() - 0.5) * 6,
+        vRot: (Math.random() - 0.5) * 8,
         age: 0,
-        lifeMs: 420,
+        lifeMs: 460,
       };
       boardGroup.add(m);
       live.push(m);
@@ -104,11 +112,10 @@ export function createParticleSystem({ boardGroup }) {
   }
 
   function hexPulse(localX, localY, color = themeVisuals.pulse) {
-    // Thin hex-shaped shockwave, tight and quick.
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color),
       transparent: true,
-      opacity: 0.9,
+      opacity: 1,
       side: THREE.DoubleSide,
       depthWrite: false,
     });
@@ -120,14 +127,14 @@ export function createParticleSystem({ boardGroup }) {
     ring.userData = {
       kind: 'hexring',
       age: 0,
-      lifeMs: 280,
+      lifeMs: 420,
       fromScale: 0.55,
-      toScale: 1.05,
+      toScale: 1.6,
+      peakOpacity: 1,
     };
     boardGroup.add(ring);
     live.push(ring);
 
-    // Bright pinpoint flash at dead center
     const flashMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(themeVisuals.flash),
       transparent: true,
@@ -137,10 +144,10 @@ export function createParticleSystem({ boardGroup }) {
     });
     const flash = new THREE.Mesh(flashGeom, flashMat);
     flash.position.set(localX, localY, 0.05);
-    flash.scale.setScalar(0.3);
+    flash.scale.setScalar(0.35);
     flash.layers.set(BLOOM_LAYER);
     flash.renderOrder = 7;
-    flash.userData = { kind: 'flash', age: 0, lifeMs: 180 };
+    flash.userData = { kind: 'flash', age: 0, lifeMs: 260, maxScale: 2.2 };
     boardGroup.add(flash);
     live.push(flash);
   }
@@ -160,9 +167,7 @@ export function createParticleSystem({ boardGroup }) {
       p.userData.age += deltaMs;
       const t = Math.min(p.userData.age / p.userData.lifeMs, 1);
       if (t >= 1) {
-        boardGroup.remove(p);
-        p.material.dispose();
-        live.splice(i, 1);
+        removeLiveParticle(p, i);
         continue;
       }
       switch (p.userData.kind) {
@@ -170,12 +175,12 @@ export function createParticleSystem({ boardGroup }) {
           const eased = 1 - Math.pow(1 - t, 3);
           const s = p.userData.fromScale + (p.userData.toScale - p.userData.fromScale) * eased;
           p.scale.set(s, s, 1);
-          p.material.opacity = (1 - eased) * 0.9;
+          p.material.opacity = (1 - eased) * (p.userData.peakOpacity ?? 0.9);
           break;
         }
         case 'flash': {
-          // Fast pop, short fade
-          const s = 0.3 + t * 0.9;
+          const peak = p.userData.maxScale ?? 1.2;
+          const s = 0.35 + t * (peak - 0.35);
           p.scale.set(s, s, 1);
           p.material.opacity = 1 - Math.pow(t, 2);
           break;
@@ -208,5 +213,12 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
-  return { shatter, pulseRing, hexPulse, implode, update, setTheme };
+  return {
+    shatter,
+    pulseRing,
+    hexPulse,
+    implode,
+    update,
+    setTheme,
+  };
 }

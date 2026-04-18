@@ -15,11 +15,13 @@ import { createComposer } from './render/postprocess.js';
 import { createVertexDots } from './render/vertexDots.js';
 import { createParticleSystem } from './render/particles.js';
 import { createBackground } from './render/background.js';
+import { createSeamCurrent } from './render/seam-current.js';
 import { createHUD } from './ui/hud.js';
 import { createOverlay } from './ui/overlay.js';
 import {
   gameState,
   resetGameState,
+  setInitialPhase,
   drainHeat,
   heatGainFromWave,
   addHeat,
@@ -41,6 +43,17 @@ import {
 
 const canvas = document.getElementById('scene');
 const hudContainer = document.getElementById('hud');
+
+function readPhaseFromURL() {
+  const raw = new URLSearchParams(window.location.search).get('phase');
+  if (raw == null) return null;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(1, Math.min(4, n));
+}
+
+const initialPhase = readPhaseFromURL();
+if (initialPhase != null) setInitialPhase(initialPhase);
 
 const { scene, camera, boardGroup } = createScene();
 let board = createBoard(gameState.activeColors);
@@ -70,6 +83,7 @@ const { render: renderFrame, setSize } = createComposer({ renderer, scene, camer
 const vertexDots = createVertexDots({ board, boardGroup });
 const particles = createParticleSystem({ boardGroup });
 const background = createBackground({ scene });
+const seamCurrent = createSeamCurrent({ board, boardGroup, phase: gameState.phase });
 const hud = createHUD({ container: hudContainer, camera });
 const overlay = createOverlay({ container: hudContainer, onPlayAgain: resetRun });
 
@@ -84,6 +98,7 @@ function applyThemePresentation(phase) {
   background.setTheme(themeId);
   particles.setTheme(themeId);
   vertexDots.setTheme(themeId);
+  seamCurrent.setPhase(phase);
   hud.refresh();
 }
 
@@ -113,8 +128,6 @@ const pointer = setupPointer({
 
 function handleTap(k, j) {
   initAudio();
-  const [vx, vy] = vPos(k, j);
-  particles.pulseRing(vx, vy);
   playSpin();
 
   spin({
@@ -164,6 +177,7 @@ function handleTap(k, j) {
 function resetRun() {
   unmountBoard(boardGroup, triangleViews);
   resetGameState();
+  if (initialPhase != null) setInitialPhase(initialPhase);
   board = createBoard(gameState.activeColors);
   phantomSlots = createPhantomSlots(board, gameState.activeColors);
   Object.assign(triangleViews, mountBoard(boardGroup, board, { phase: gameState.phase }));
@@ -216,6 +230,7 @@ function frame(timeMs) {
   }
   const dt = timeMs - lastFrameMs;
   lastFrameMs = timeMs;
+  seamCurrent.update(timeMs);
   vertexDots.update(timeMs);
   particles.update(dt);
   background.update(timeMs);

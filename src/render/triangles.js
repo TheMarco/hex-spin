@@ -46,11 +46,11 @@ function pushLoop(segments, corners) {
 
 function detailIntensityForPhase(phase) {
   return {
-    1: 0.42,
-    2: 0.48,
-    3: 0.54,
-    4: 0.6,
-  }[phase] ?? 0.42;
+    1: 0.525,
+    2: 0.6,
+    3: 0.675,
+    4: 0.75,
+  }[phase] ?? 0.525;
 }
 
 function createDetailGeometry(outerCorners, phase) {
@@ -126,7 +126,6 @@ export class Triangle {
     const baseCorners = triangleVertices(col, row).map(([k, j]) => vPos(k, j));
     this.outerCorners = scaledCorners(baseCorners, SHRINK);
 
-    // Dark fill (layer 0)
     const fillGeom = new THREE.BufferGeometry();
     fillGeom.setAttribute(
       'position',
@@ -146,7 +145,6 @@ export class Triangle {
     });
     this.fillMesh = new THREE.Mesh(fillGeom, this.fillMaterial);
 
-    // Bright outer outline — the only piece on the bloom layer (spec §15).
     const outlineGeom = new LineGeometry();
     outlineGeom.setPositions([
       ...this.outerCorners[0],
@@ -167,8 +165,6 @@ export class Triangle {
     this.outlineMesh.layers.set(BLOOM_LAYER);
     this.outlineMesh.computeLineDistances();
 
-    // Inner detail only. The outer triangle silhouette remains unchanged
-    // across phases; phase styling happens entirely inside this layer.
     this.detailMaterial = new THREE.LineBasicMaterial({
       color: new THREE.Color(neonColor),
       transparent: true,
@@ -176,9 +172,7 @@ export class Triangle {
       depthTest: false,
     });
     this.detailMesh = new THREE.LineSegments(createDetailGeometry(this.outerCorners, this.phase), this.detailMaterial);
-    // Force detail to render after the dark fill. Without this, THREE's
-    // transparent sort can tie at z=0 and fill draws over detail for some
-    // orientations (noticed: down-triangles losing the design).
+
     this.fillMesh.renderOrder = 0;
     this.detailMesh.renderOrder = 1;
     this.detailMesh.position.z = 0.01;
@@ -224,8 +218,6 @@ export class Triangle {
   }
 
   flash(durationMs) {
-    // Pulse only the bright outline — bloom turns it into a white-hot flash
-    // (spec §6.5). Detail layer stays calm so the "etched panel" read holds.
     return tween(durationMs, 'sinePulse', (eased) => {
       this.outlineMaterial.opacity = 1 + eased * 0.85;
     }).then(() => {

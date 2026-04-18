@@ -44,7 +44,8 @@ src/
     state.js        Global `gameState`, heat constants, phase thresholds, busy lock
   render/
     scene.js        Scene/camera/boardGroup creation, mount/unmount helpers
-    triangles.js    Triangle view: dark fill + bloomed outline + circuit detail
+    triangles.js    Triangle view: dark fill + bloomed outline + phase-specific inner circuit detail
+    seam-current.js Interior shared-edge lightning/current layer (no outer-border current)
     postprocess.js  Selective bloom using two EffectComposers
     background.js   Shader nebula planes + forward-motion starfield
     particles.js    Hex pulse, flash, implosion, shatter particles
@@ -219,6 +220,10 @@ Heat is the run timer in `src/game/state.js`.
   - a dark `MeshBasicMaterial` fill
   - a bright `Line2` outer outline
   - a dim `LineSegments` circuit/hull detail overlay
+- Lightning/current is now a separate board-level layer in `render/seam-current.js`:
+  - built only from shared interior triangle edges
+  - omitted entirely on the outside border of the main hex
+  - animated as sparse white-hot seam bolts rather than per-triangle perimeter dashes
 - The outer fill and outline remain the same in every phase.
 - Only the inner detail layer changes by phase:
   - phase 1: baseline PCB/chip seam
@@ -280,7 +285,7 @@ Audio is currently sample-based, not procedural.
 - `rebuildHitCircles(newBoard)` is called on run reset
 - Input concurrency is gated by `gameState.busy` through `withBusy()` in `spin.js`
 - Important current behavior:
-  - `main.js::handleTap()` triggers a white pulse marker and `playSpin()` before `spin()` has a chance to reject the move
+  - `main.js::handleTap()` triggers local visual feedback (`hexPulse`) and `playSpin()` before `spin()` has a chance to reject the move
   - as a result, taps during `busy` or `phase_transition` can still produce local feedback even when they do not mutate game state
   - taps outside valid hit circles do nothing
 
