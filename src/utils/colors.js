@@ -1,6 +1,8 @@
-// Each theme owns the palette for its phase. Phase 4 needs maximum
-// hue spread for 6-way readability; earlier phases can lean into cohesive
-// moods since fewer colors is easier to distinguish.
+// Single canonical 6-color palette used across every phase. Each phase just
+// uses a subset; that way a leftover triangle from an earlier phase always
+// has a color string that also exists in the current phase's palette — no
+// visually-identical-but-different-string collisions that would make
+// "completed" hexes fail to clear.
 export const NEON = {
   magenta: '#FF2BD6',
   orange: '#FF7A00',
@@ -11,37 +13,27 @@ export const NEON = {
 };
 
 export const DARK = {
-  // Phase 4 (solar)
   '#FF2BD6': '#260620',
   '#FF7A00': '#261200',
   '#F5FF00': '#242600',
   '#00FF66': '#00260F',
   '#00E5FF': '#002226',
   '#8B2CFF': '#140626',
-  // Phase 1 (arcade — synthwave sunset)
-  '#FF006E': '#260011',
-  '#8338EC': '#130823',
-  '#3A86FF': '#081426',
-  // Phase 2 (reactor — candy pop)
-  '#F15BB5': '#24081B',
-  '#FEE440': '#262208',
-  '#06D6A0': '#012018',
-  // Phase 3 (void — aurora) — shares '#3A86FF' with phase 1
-  '#9B5DE5': '#160E23',
-  '#00F5D4': '#002420',
 };
 
 export const STONE_FILL = '#2A2A2A';
 export const STONE_OUTLINE = '#555555';
 export const BG = '#000000';
 
+// Additive palettes: each phase introduces exactly one new color on top of
+// the previous phase. The "new color" is what the per-phase bonus hunts.
 const THEME_DEFS = {
   arcade: {
     id: 'arcade',
     label: 'Arcade Neon',
     shortLabel: 'ARC',
     phase: 1,
-    ordered: ['#FF006E', '#8338EC', '#3A86FF'],
+    ordered: [NEON.magenta, NEON.purple, NEON.cyan],
     newColor: null,
   },
   reactor: {
@@ -49,24 +41,24 @@ const THEME_DEFS = {
     label: 'Toxic Reactor',
     shortLabel: 'TOX',
     phase: 2,
-    ordered: ['#F15BB5', '#FEE440', '#3A86FF', '#06D6A0'],
-    newColor: '#06D6A0',
+    ordered: [NEON.magenta, NEON.purple, NEON.cyan, NEON.yellow],
+    newColor: NEON.yellow,
   },
   void: {
     id: 'void',
     label: 'Deep Void',
     shortLabel: 'VOID',
     phase: 3,
-    ordered: ['#FEE440', '#F15BB5', '#9B5DE5', '#3A86FF', '#00F5D4'],
-    newColor: '#9B5DE5',
+    ordered: [NEON.magenta, NEON.purple, NEON.cyan, NEON.yellow, NEON.green],
+    newColor: NEON.green,
   },
   solar: {
     id: 'solar',
     label: 'Solar Burn',
     shortLabel: 'SOL',
     phase: 4,
-    ordered: [NEON.magenta, NEON.orange, NEON.yellow, NEON.green, NEON.cyan, NEON.purple],
-    newColor: NEON.purple,
+    ordered: [NEON.magenta, NEON.purple, NEON.cyan, NEON.yellow, NEON.green, NEON.orange],
+    newColor: NEON.orange,
   },
 };
 
