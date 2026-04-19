@@ -65,9 +65,10 @@ export function createBackground({ scene }) {
     void main() {
       vec2 uv = vUv - 0.5;
       float d = length(uv);
-      // Soft circular falloff so nebula bodies fade into black at the edges.
+      // Steep outer tail keeps the circular plane silhouette from reading
+      // as a visible edge against empty space; core is boosted to compensate.
       float rad = smoothstep(0.5, 0.0, d);
-      rad = pow(rad, 1.5);
+      rad = pow(rad, 3.0);
 
       vec2 p = vUv * 3.2 + vec2(uSeed);
       float n1 = fbm(p + vec2(uTime * 0.02, uTime * 0.012));
@@ -76,7 +77,7 @@ export function createBackground({ scene }) {
 
       float density = rad * cloud * uOpacity;
       vec3 col = mix(uColorA, uColorB, cloud * 0.75);
-      gl_FragColor = vec4(col * density * 1.35, density * 0.78);
+      gl_FragColor = vec4(col * density * 2.4, density * 1.2);
     }
   `;
 
