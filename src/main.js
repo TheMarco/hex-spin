@@ -96,14 +96,7 @@ const {
   render: renderFrame,
   setSize,
   kickBloom,
-  triggerShockwave,
 } = createComposer({ renderer, scene, camera });
-
-const _ndc = new THREE.Vector3();
-function worldToNdc(worldX, worldY) {
-  _ndc.set(worldX, worldY, 0).project(camera);
-  return new THREE.Vector2(_ndc.x, _ndc.y);
-}
 
 const vertexDots = createVertexDots({ board, boardGroup });
 const particles = createParticleSystem({ boardGroup });
@@ -194,16 +187,12 @@ function handleTap(k, j) {
       onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
         const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
         let waveHasBonus = false;
-        let sumX = 0;
-        let sumY = 0;
         for (const h of hexes) {
           const bonus = Boolean(newColor && h.color === newColor);
           if (bonus) waveHasBonus = true;
           const points = bonus ? pointsPerHex * NEW_COLOR_BONUS_MULT : pointsPerHex;
           gameState.score += points;
           const [hx, hy] = vPos(h.k, h.j);
-          sumX += hx;
-          sumY += hy;
           hud.spawnFloatingScore(
             hx + boardGroup.position.x,
             hy + boardGroup.position.y,
@@ -217,16 +206,8 @@ function handleTap(k, j) {
         playHexClear(cascade, { bonus: waveHasBonus });
         playExtraBonus({ cascade, freshMult });
 
-        const cx = sumX / hexes.length + boardGroup.position.x;
-        const cy = sumY / hexes.length + boardGroup.position.y;
-        const ndc = worldToNdc(cx, cy);
         const cascadeBoost = Math.min(cascade - 1, 4);
         kickBloom(0.4 + 0.2 * cascadeBoost + (waveHasBonus ? 0.15 : 0), 280);
-        triggerShockwave({
-          ndc,
-          durMs: 420 + 50 * cascadeBoost,
-          amp: 0.008 + 0.003 * cascadeBoost,
-        });
         shake(0.008 + 0.012 * cascade, 200 + 30 * cascade);
         if (cascade >= 2) fovPunch(0.9 + 0.4 * cascadeBoost, 220);
         hud.refresh();
