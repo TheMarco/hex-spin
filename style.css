@@ -292,6 +292,7 @@ body {
   }
 }
 
+
 @media (max-width: 720px) {
   .hud-row {
     left: 6px;
