@@ -73,7 +73,6 @@ export async function resolveCompletions(ctx) {
       effects?.hexPulse?.(vx, vy, d.color);
       effects?.implode?.(vx, vy, d.color);
       effects?.streaks?.(vx, vy, d.color);
-      if (effects?.glitter) setTimeout(() => effects.glitter(vx, vy, d.color), 240);
       if (effects?.shatter) {
         setTimeout(() => effects.shatter(vx, vy, d.color, 16), 360);
       }

@@ -30,7 +30,18 @@ export function createComposer({ renderer, scene, camera }) {
 
   const bloomPass = new UnrealBloomPass(size, BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
 
-  const bloomComposer = new EffectComposer(renderer);
+  // HDR float targets so additive sprites and emissive multipliers can push past
+  // 1.0, giving the bloom a real "white-hot core" punch instead of saturating
+  // the moment two bright pixels overlap.
+  const hdrTarget = new THREE.WebGLRenderTarget(size.x, size.y, {
+    type: THREE.HalfFloatType,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: true,
+    stencilBuffer: false,
+  });
+
+  const bloomComposer = new EffectComposer(renderer, hdrTarget.clone());
   bloomComposer.setPixelRatio(bloomPixelRatio);
   bloomComposer.renderToScreen = false;
   bloomComposer.addPass(renderPass);
@@ -120,7 +131,7 @@ export function createComposer({ renderer, scene, camera }) {
     'tDiffuse'
   );
 
-  const finalComposer = new EffectComposer(renderer);
+  const finalComposer = new EffectComposer(renderer, hdrTarget);
   finalComposer.addPass(renderPass);
   finalComposer.addPass(mixPass);
   finalComposer.addPass(shockPass);

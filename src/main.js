@@ -221,14 +221,14 @@ function handleTap(k, j) {
         const cy = sumY / hexes.length + boardGroup.position.y;
         const ndc = worldToNdc(cx, cy);
         const cascadeBoost = Math.min(cascade - 1, 4);
-        kickBloom(0.85 + 0.35 * cascadeBoost + (waveHasBonus ? 0.25 : 0), 360);
+        kickBloom(0.4 + 0.2 * cascadeBoost + (waveHasBonus ? 0.15 : 0), 280);
         triggerShockwave({
           ndc,
-          durMs: 460 + 60 * cascadeBoost,
-          amp: 0.012 + 0.005 * cascadeBoost + (waveHasBonus ? 0.004 : 0),
+          durMs: 420 + 50 * cascadeBoost,
+          amp: 0.008 + 0.003 * cascadeBoost,
         });
-        shake(0.012 + 0.018 * cascade, 220 + 40 * cascade);
-        if (cascade >= 2) fovPunch(1.4 + 0.6 * cascadeBoost, 240);
+        shake(0.008 + 0.012 * cascade, 200 + 30 * cascade);
+        if (cascade >= 2) fovPunch(0.9 + 0.4 * cascadeBoost, 220);
         hud.refresh();
       },
       onPhaseChange: async (newPhase) => {

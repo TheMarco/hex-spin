@@ -3,9 +3,59 @@ import { DEFAULT_THEME_ID, getThemeVisuals } from '../utils/colors.js';
 
 const BLOOM_LAYER = 1;
 
+// Soft radial-gradient texture — the sprite mainstay for explosion glow.
+// Bright core, smooth alpha falloff to 0 at the edge so additive blending
+// stacks into halos without seams.
+function createSoftSparkTexture() {
+  const size = 64;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  const cx = size * 0.5;
+  const cy = size * 0.5;
+  const r = size * 0.5;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0.0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.18, 'rgba(255,255,255,0.85)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.28)');
+  g.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// Hotter core: white-hot center with warm tail, used for the impact flash.
+function createCoreFlashTexture() {
+  const size = 96;
+  const c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  const cx = size * 0.5;
+  const cy = size * 0.5;
+  const r = size * 0.5;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0.0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.12, 'rgba(255,255,255,1)');
+  g.addColorStop(0.4, 'rgba(255,240,210,0.55)');
+  g.addColorStop(0.78, 'rgba(255,160,80,0.18)');
+  g.addColorStop(1.0, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export function createParticleSystem({ boardGroup }) {
   const live = [];
   let themeVisuals = getThemeVisuals(DEFAULT_THEME_ID);
+
+  const softTex = createSoftSparkTexture();
+  const flashTex = createCoreFlashTexture();
 
   const PARTICLE_SIZE = 0.07;
   const ph = (PARTICLE_SIZE * Math.sqrt(3)) / 2;
@@ -170,7 +220,7 @@ export function createParticleSystem({ boardGroup }) {
 
   // Comet-tail streaks radiating outward. Stretched along velocity so they read
   // as fast-moving trails rather than little triangles.
-  function streaks(localX, localY, color, count = 14) {
+  function streaks(localX, localY, color, count = 8) {
     const c = new THREE.Color(color);
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
@@ -241,7 +291,81 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
+  // Single hot-white core flash sprite — gives the "snap" of impact.
+  // White-shifted, HDR-bright, expands and fades fast.
+  function coreFlash(localX, localY, color) {
+    const c = new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.6);
+    c.multiplyScalar(1.8);
+    const mat = new THREE.SpriteMaterial({
+      map: flashTex,
+      color: c,
+      transparent: true,
+      opacity: 1,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const s = new THREE.Sprite(mat);
+    s.position.set(localX, localY, 0.07);
+    s.scale.setScalar(0.4);
+    s.layers.set(BLOOM_LAYER);
+    s.renderOrder = 9;
+    s.userData = {
+      kind: 'coreFlash',
+      age: 0,
+      lifeMs: 200,
+      fromScale: 0.4,
+      toScale: 1.8,
+    };
+    boardGroup.add(s);
+    live.push(s);
+  }
+
+  // HDR-bright soft-glow sprites radiating outward — main "explosion body".
+  // Stacks additively into a glowing fireball look instead of geometric shards.
+  function embers(localX, localY, color, count = 14) {
+    const base = new THREE.Color(color);
+    const white = new THREE.Color('#ffffff');
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.8;
+      const speed = 1.2 + Math.random() * 2.0;
+      const tint = base.clone().lerp(white, 0.1 + Math.random() * 0.3);
+      tint.multiplyScalar(1.2 + Math.random() * 0.8);
+      const mat = new THREE.SpriteMaterial({
+        map: softTex,
+        color: tint,
+        transparent: true,
+        opacity: 1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+      });
+      const s = new THREE.Sprite(mat);
+      s.position.set(localX, localY, 0.06);
+      const baseScale = 0.16 + Math.random() * 0.16;
+      s.scale.setScalar(baseScale);
+      s.layers.set(BLOOM_LAYER);
+      s.renderOrder = 7;
+      s.userData = {
+        kind: 'ember',
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        drag: 1.6 + Math.random() * 1.0,
+        gravity: 0.4 + Math.random() * 0.6,
+        baseScale,
+        flickerSpeed: 16 + Math.random() * 22,
+        flickerPhase: Math.random() * Math.PI * 2,
+        age: 0,
+        lifeMs: 540 + Math.random() * 380,
+      };
+      boardGroup.add(s);
+      live.push(s);
+    }
+  }
+
   function hexPulse(localX, localY, color = themeVisuals.pulse) {
+    coreFlash(localX, localY, color);
+    embers(localX, localY, color, 14);
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color),
       transparent: true,
@@ -265,9 +389,7 @@ export function createParticleSystem({ boardGroup }) {
     boardGroup.add(ring);
     live.push(ring);
 
-    sparkle(localX, localY, color, 32);
-    // Firework-style second pop after the initial flash settles.
-    setTimeout(() => sparkle(localX, localY, color, 18), 140);
+    sparkle(localX, localY, color, 22);
   }
 
   // Legacy name, kept for compatibility with any other callers —
@@ -326,6 +448,32 @@ export function createParticleSystem({ boardGroup }) {
           const dieScale = 1 - Math.pow(t, 3);
           const baseScale = 0.5 + 0.4 * op;
           p.scale.setScalar(baseScale * dieScale);
+          break;
+        }
+        case 'coreFlash': {
+          const eased = 1 - Math.pow(1 - t, 3);
+          const s = p.userData.fromScale + (p.userData.toScale - p.userData.fromScale) * eased;
+          p.scale.setScalar(s);
+          p.material.opacity = Math.pow(1 - t, 1.6);
+          break;
+        }
+        case 'ember': {
+          const dragMul = Math.exp(-p.userData.drag * dt);
+          p.userData.vx *= dragMul;
+          p.userData.vy *= dragMul;
+          p.userData.vy -= p.userData.gravity * dt;
+          p.position.x += p.userData.vx * dt;
+          p.position.y += p.userData.vy * dt;
+          const flicker =
+            0.7 +
+            0.3 *
+              Math.sin(
+                p.userData.age * 0.001 * p.userData.flickerSpeed + p.userData.flickerPhase
+              );
+          p.material.opacity = flicker * Math.pow(1 - t, 1.4);
+          // Slight breathe — grow then shrink — sells the gas-cloud feel.
+          const sizeMul = 1.0 + 0.5 * Math.sin(t * Math.PI);
+          p.scale.setScalar(p.userData.baseScale * sizeMul);
           break;
         }
         case 'streak': {
