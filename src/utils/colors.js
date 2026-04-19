@@ -9,7 +9,7 @@ export const NEON = {
   yellow: '#F5FF00',
   green: '#00FF66',
   cyan: '#00E5FF',
-  purple: '#8B2CFF',
+  purple: '#5C7CFF',
 };
 
 export const DARK = {
@@ -18,7 +18,7 @@ export const DARK = {
   '#F5FF00': '#242600',
   '#00FF66': '#00260F',
   '#00E5FF': '#002226',
-  '#8B2CFF': '#140626',
+  '#5C7CFF': '#0E1326',
 };
 
 export const STONE_FILL = '#2A2A2A';
