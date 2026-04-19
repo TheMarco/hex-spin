@@ -25,6 +25,10 @@ export function createComposer({ renderer, scene, camera }) {
   const size = new THREE.Vector2(window.innerWidth, window.innerHeight);
   const isMobile = window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent);
   const bloomPixelRatio = isMobile ? 0.5 : 1;
+  // MSAA on the main scene pass. The renderer's own `antialias: true` is
+  // ignored when rendering via EffectComposer (it only covers the default
+  // framebuffer), so we have to multisample the composer targets explicitly.
+  const msaaSamples = isMobile ? 2 : 4;
 
   const renderPass = new RenderPass(scene, camera);
 
@@ -39,9 +43,14 @@ export function createComposer({ renderer, scene, camera }) {
     magFilter: THREE.LinearFilter,
     depthBuffer: true,
     stencilBuffer: false,
+    samples: msaaSamples,
   });
 
-  const bloomComposer = new EffectComposer(renderer, hdrTarget.clone());
+  // Bloom pass reads get downsampled and blurred, so MSAA on its target is
+  // wasted fillrate. Give the bloom composer a non-multisampled clone.
+  const bloomTarget = hdrTarget.clone();
+  bloomTarget.samples = 0;
+  const bloomComposer = new EffectComposer(renderer, bloomTarget);
   bloomComposer.setPixelRatio(bloomPixelRatio);
   bloomComposer.renderToScreen = false;
   bloomComposer.addPass(renderPass);

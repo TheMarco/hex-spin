@@ -19,6 +19,7 @@ export async function spin({
   effects,
   hooks,
   applyColorShift = true,
+  deferResolve = false,
 }) {
   if (gameState.status === 'game_over') return false;
   if (gameState.status === 'phase_transition') return false;
@@ -151,20 +152,23 @@ export async function spin({
     gameState.spins++;
     gameState.spinsSinceLastClear++;
 
-    await resolveCompletions({
-      board,
-      triangleViews,
-      activeColors: gameState.activeColors,
-      effects,
-      hooks,
-      onCascadeWave: (info) => {
-        gameState.currentCascade = info.cascade;
-        gameState.longestCascade = Math.max(gameState.longestCascade, info.cascade);
-        gameState.hexCount += info.hexes.length;
-        hooks?.onCascadeWave?.(info);
-      },
-    });
-    gameState.currentCascade = 0;
+    if (!deferResolve) {
+      await resolveCompletions({
+        board,
+        triangleViews,
+        activeColors: gameState.activeColors,
+        effects,
+        hooks,
+        onCascadeWave: (info) => {
+          gameState.currentCascade = info.cascade;
+          gameState.longestCascade = Math.max(gameState.longestCascade, info.cascade);
+          gameState.hexCount += info.hexes.length;
+          hooks?.onCascadeWave?.(info);
+        },
+        onHexBeat: hooks?.onHexBeat,
+      });
+      gameState.currentCascade = 0;
+    }
 
     return true;
   });

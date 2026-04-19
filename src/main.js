@@ -10,6 +10,7 @@ import {
 } from './utils/colors.js';
 import { setupPointer } from './input/pointer.js';
 import { spin } from './game/spin.js';
+import { findCompletedHexes, resolveCompletions } from './game/rules.js';
 import { refreshOutlineResolution } from './render/triangles.js';
 import { createComposer } from './render/postprocess.js';
 import { createVertexDots } from './render/vertexDots.js';
@@ -28,6 +29,7 @@ import {
   addHeat,
   isHeatEmpty,
   HEAT_PHASE_BONUS,
+  withBusy,
 } from './game/state.js';
 import { vPos } from './utils/math.js';
 import {
@@ -168,11 +170,97 @@ async function repaintBoardForPhase(newPhase) {
   await Promise.all(Object.values(triangleViews).map((v) => v.fade?.(1, 320)));
 }
 
-function handleTap(k, j) {
+// Short grace window after a spin completes ≥1 hex: another tap within this
+// window folds its rotation into the same pending cascade so two hits can
+// chain into a multi-hex clear. Kept short enough that single clears feel
+// snappy — the wait is barely perceptible.
+const GRACE_WINDOW_MS = 250;
+let graceTimerId = null;
+
+function cancelGrace() {
+  if (graceTimerId != null) {
+    clearTimeout(graceTimerId);
+    graceTimerId = null;
+  }
+}
+
+const gameHooks = {
+  onSpinStart: () => {
+    playSpin();
+  },
+  onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
+    const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
+    let waveHasBonus = false;
+    for (const h of hexes) {
+      const bonus = Boolean(newColor && h.color === newColor);
+      if (bonus) waveHasBonus = true;
+      const points = bonus ? pointsPerHex * NEW_COLOR_BONUS_MULT : pointsPerHex;
+      gameState.score += points;
+      const [hx, hy] = vPos(h.k, h.j);
+      hud.spawnFloatingScore(
+        hx + boardGroup.position.x,
+        hy + boardGroup.position.y,
+        points,
+        h.color,
+        bonus
+      );
+    }
+    addHeat(heatGainFromWave(hexes.length));
+    playImplodeWhoosh();
+    // Per-hex clear sounds fire from onHexBeat, staggered by HEX_BEAT_MS.
+    playExtraBonus({ cascade, freshMult });
+
+    const cascadeBoost = Math.min(cascade - 1, 4);
+    kickBloom(0.4 + 0.2 * cascadeBoost + (waveHasBonus ? 0.15 : 0), 280);
+    shake(0.008 + 0.012 * cascade, 200 + 30 * cascade);
+    if (cascade >= 2) fovPunch(0.9 + 0.4 * cascadeBoost, 220);
+    hud.refresh();
+  },
+  // Per-hex pop sound, fired by rules.js once per hex with HEX_BEAT_MS gaps.
+  // Pitch climbs via cascade + index so combos sound like they're laddering up.
+  onHexBeat: ({ hex, index, cascade }) => {
+    const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
+    const bonus = Boolean(newColor && hex.color === newColor);
+    playHexClear(cascade + index, { bonus });
+  },
+  onPhaseChange: async (newPhase) => {
+    applyThemePresentation(newPhase);
+    addHeat(HEAT_PHASE_BONUS);
+    hud.refresh();
+    overlay.playPhaseTransition(newPhase);
+    playPhaseTransitionSfx(newPhase);
+    await repaintBoardForPhase(newPhase);
+  },
+};
+
+async function detonateArmed() {
+  cancelGrace();
+  await withBusy(async () => {
+    await resolveCompletions({
+      board,
+      triangleViews,
+      activeColors: gameState.activeColors,
+      effects: particles,
+      hooks: gameHooks,
+      onCascadeWave: (info) => {
+        gameState.currentCascade = info.cascade;
+        gameState.longestCascade = Math.max(gameState.longestCascade, info.cascade);
+        gameState.hexCount += info.hexes.length;
+        gameHooks.onCascadeWave(info);
+      },
+      onHexBeat: gameHooks.onHexBeat,
+    });
+    gameState.currentCascade = 0;
+  });
+}
+
+async function handleTap(k, j) {
   if (isPaused()) return;
   initAudio();
 
-  spin({
+  cancelGrace();
+
+  const ok = await spin({
     k,
     j,
     board,
@@ -180,51 +268,23 @@ function handleTap(k, j) {
     boardGroup,
     triangleViews,
     effects: particles,
-    hooks: {
-      onSpinStart: () => {
-        playSpin();
-      },
-      onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
-        const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
-        let waveHasBonus = false;
-        for (const h of hexes) {
-          const bonus = Boolean(newColor && h.color === newColor);
-          if (bonus) waveHasBonus = true;
-          const points = bonus ? pointsPerHex * NEW_COLOR_BONUS_MULT : pointsPerHex;
-          gameState.score += points;
-          const [hx, hy] = vPos(h.k, h.j);
-          hud.spawnFloatingScore(
-            hx + boardGroup.position.x,
-            hy + boardGroup.position.y,
-            points,
-            h.color,
-            bonus
-          );
-        }
-        addHeat(heatGainFromWave(hexes.length));
-        playImplodeWhoosh();
-        playHexClear(cascade, { bonus: waveHasBonus });
-        playExtraBonus({ cascade, freshMult });
-
-        const cascadeBoost = Math.min(cascade - 1, 4);
-        kickBloom(0.4 + 0.2 * cascadeBoost + (waveHasBonus ? 0.15 : 0), 280);
-        shake(0.008 + 0.012 * cascade, 200 + 30 * cascade);
-        if (cascade >= 2) fovPunch(0.9 + 0.4 * cascadeBoost, 220);
-        hud.refresh();
-      },
-      onPhaseChange: async (newPhase) => {
-        applyThemePresentation(newPhase);
-        addHeat(HEAT_PHASE_BONUS);
-        hud.refresh();
-        overlay.playPhaseTransition(newPhase);
-        playPhaseTransitionSfx(newPhase);
-        await repaintBoardForPhase(newPhase);
-      },
-    },
+    hooks: gameHooks,
+    deferResolve: true,
   });
+  if (!ok) return;
+  if (gameState.status !== 'idle') return;
+
+  const armed = findCompletedHexes(board);
+  if (armed.length === 0) return;
+
+  graceTimerId = setTimeout(() => {
+    graceTimerId = null;
+    detonateArmed();
+  }, GRACE_WINDOW_MS);
 }
 
 function resetRun() {
+  cancelGrace();
   unmountBoard(boardGroup, triangleViews);
   resetGameState();
   if (initialPhase != null) setInitialPhase(initialPhase);

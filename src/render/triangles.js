@@ -221,6 +221,7 @@ export class Triangle {
       transparent: true,
       opacity: 1,
       depthTest: false,
+      alphaToCoverage: true,
     });
     this.outlineMaterial.resolution.set(window.innerWidth, window.innerHeight);
     outlineMaterials.add(this.outlineMaterial);

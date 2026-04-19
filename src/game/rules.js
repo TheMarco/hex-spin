@@ -2,6 +2,9 @@ import { ROWS, COLS, ring, isRealVertex, key, vPos } from '../utils/math.js';
 import { gameState, nextPhaseFromHexCount, advancePhase, freshnessMultiplier } from './state.js';
 
 export const MAX_CASCADE = 50;
+// Gap between per-hex pops in a multi-hex wave. Each hex fires audio + VFX in
+// one synchronous instruction, then we wait this long before the next.
+export const HEX_BEAT_MS = 200;
 
 // Scoring: 100 × freshMult × 2^(phase-1) × 2^(cascade-1) × m
 // freshMult rewards fast hits (2.0× on first spin after last clear → 1.1× floor).
@@ -40,8 +43,10 @@ function defaultPicker(activeColors) {
 }
 
 export async function resolveCompletions(ctx) {
-  const { board, triangleViews, activeColors, onCascadeWave, effects, hooks } = ctx;
+  const { board, triangleViews, activeColors, onCascadeWave, onHexBeat, effects, hooks } = ctx;
   const pickColor = ctx.pickColor ?? defaultPicker(activeColors);
+  // Stagger is purely presentational — skip the awaits in tests (no effects).
+  const shouldStagger = !!effects;
 
   let cascade = 0;
   let totalHexes = 0;
@@ -68,13 +73,18 @@ export async function resolveCompletions(ctx) {
     for (const d of done) for (const [c, r] of d.ts) affectedKeys.add(key(c, r));
     const affected = [...affectedKeys];
 
-    for (const d of done) {
+    for (let i = 0; i < done.length; i++) {
+      const d = done[i];
       const [vx, vy] = vPos(d.k, d.j);
+      if (onHexBeat) onHexBeat({ hex: d, index: i, count: done.length, cascade });
       effects?.hexPulse?.(vx, vy, d.color);
       effects?.implode?.(vx, vy, d.color);
       effects?.streaks?.(vx, vy, d.color);
       if (effects?.shatter) {
         setTimeout(() => effects.shatter(vx, vy, d.color, 16), 360);
+      }
+      if (shouldStagger && i < done.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, HEX_BEAT_MS));
       }
     }
 
