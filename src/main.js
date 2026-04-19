@@ -18,6 +18,7 @@ import { createBackground } from './render/background.js';
 import { createSeamCurrent } from './render/seam-current.js';
 import { createHUD } from './ui/hud.js';
 import { createOverlay } from './ui/overlay.js';
+import { createHowToPlay } from './ui/howToPlay.js';
 import {
   gameState,
   resetGameState,
@@ -321,19 +322,31 @@ function showTitleScreen() {
   el.innerHTML = `
     <div class="title-inner">
       <img class="title-logo" src="${logoUrl}" alt="Hex Spin" />
-      <div class="title-start">Click or tap to start</div>
+      <div class="title-buttons">
+        <button class="title-btn title-btn-primary" data-action="start">START</button>
+        <button class="title-btn" data-action="howto">HOW TO PLAY</button>
+      </div>
     </div>
     <div class="title-footer">Copyright 2026 \u00A9 AI &amp; Design Game Studios</div>
   `;
   hudContainer.appendChild(el);
-  const dismiss = () => {
-    el.removeEventListener('pointerdown', dismiss);
+
+  const startGame = () => {
     el.classList.add('dismissed');
     setTimeout(() => el.remove(), 400);
     gameState.status = 'idle';
     initAudio();
   };
-  el.addEventListener('pointerdown', dismiss);
+
+  el.querySelector('[data-action="start"]').addEventListener('click', startGame);
+  el.querySelector('[data-action="howto"]').addEventListener('click', () => {
+    el.classList.add('behind-howto');
+    createHowToPlay({
+      container: hudContainer,
+      onBack: () => el.classList.remove('behind-howto'),
+      onStart: startGame,
+    });
+  });
 }
 showTitleScreen();
 
