@@ -168,6 +168,79 @@ export function createParticleSystem({ boardGroup }) {
     }
   }
 
+  // Comet-tail streaks radiating outward. Stretched along velocity so they read
+  // as fast-moving trails rather than little triangles.
+  function streaks(localX, localY, color, count = 14) {
+    const c = new THREE.Color(color);
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      const speed = 2.6 + Math.random() * 2.0;
+      const mat = new THREE.MeshBasicMaterial({
+        color: c.clone().lerp(new THREE.Color('#ffffff'), 0.25 + Math.random() * 0.35),
+        transparent: true,
+        opacity: 1,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const m = new THREE.Mesh(triGeom, mat);
+      m.position.set(localX, localY, 0.06);
+      m.rotation.z = angle - Math.PI / 2;
+      m.scale.set(0.5, 3.4 + Math.random() * 2.2, 1);
+      m.layers.set(BLOOM_LAYER);
+      m.renderOrder = 7;
+      m.userData = {
+        kind: 'streak',
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        drag: 1.8 + Math.random() * 0.8,
+        baseWidth: 0.5,
+        age: 0,
+        lifeMs: 380 + Math.random() * 200,
+      };
+      boardGroup.add(m);
+      live.push(m);
+    }
+  }
+
+  // Slow-falling glitter that drifts down after the main pop. Twinkles as it falls.
+  function glitter(localX, localY, color, count = 18) {
+    const base = new THREE.Color(color);
+    const white = new THREE.Color('#ffffff');
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.5 + Math.random() * 1.3;
+      const mat = new THREE.MeshBasicMaterial({
+        color: base.clone().lerp(white, 0.4 + Math.random() * 0.45),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      const m = new THREE.Mesh(sparkGeom, mat);
+      m.position.set(localX, localY, 0.06);
+      m.rotation.z = Math.random() * Math.PI * 2;
+      const baseScale = 0.35 + Math.random() * 0.45;
+      m.scale.setScalar(baseScale);
+      m.layers.set(BLOOM_LAYER);
+      m.renderOrder = 7;
+      m.userData = {
+        kind: 'glitter',
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed + 0.7,
+        vRot: (Math.random() - 0.5) * 4,
+        gravity: 1.4 + Math.random() * 0.7,
+        delay: 60 + Math.random() * 220,
+        twinkleSpeed: 12 + Math.random() * 20,
+        twinklePhase: Math.random() * Math.PI * 2,
+        baseScale,
+        age: 0,
+        lifeMs: 1200 + Math.random() * 500,
+      };
+      boardGroup.add(m);
+      live.push(m);
+    }
+  }
+
   function hexPulse(localX, localY, color = themeVisuals.pulse) {
     const ringMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(color),
@@ -192,7 +265,9 @@ export function createParticleSystem({ boardGroup }) {
     boardGroup.add(ring);
     live.push(ring);
 
-    sparkle(localX, localY, color, 26);
+    sparkle(localX, localY, color, 32);
+    // Firework-style second pop after the initial flash settles.
+    setTimeout(() => sparkle(localX, localY, color, 18), 140);
   }
 
   // Legacy name, kept for compatibility with any other callers —
@@ -253,6 +328,37 @@ export function createParticleSystem({ boardGroup }) {
           p.scale.setScalar(baseScale * dieScale);
           break;
         }
+        case 'streak': {
+          const dragMul = Math.exp(-p.userData.drag * dt);
+          p.userData.vx *= dragMul;
+          p.userData.vy *= dragMul;
+          p.position.x += p.userData.vx * dt;
+          p.position.y += p.userData.vy * dt;
+          const speedNow = Math.hypot(p.userData.vx, p.userData.vy);
+          p.scale.set(p.userData.baseWidth, Math.max(0.5, speedNow * 1.4), 1);
+          p.material.opacity = Math.pow(1 - t, 1.4);
+          break;
+        }
+        case 'glitter': {
+          if (p.userData.age < p.userData.delay) {
+            p.material.opacity = 0;
+            break;
+          }
+          p.userData.vy -= p.userData.gravity * dt;
+          p.position.x += p.userData.vx * dt;
+          p.position.y += p.userData.vy * dt;
+          p.rotation.z += p.userData.vRot * dt;
+          const visT = (p.userData.age - p.userData.delay) /
+            Math.max(1, p.userData.lifeMs - p.userData.delay);
+          const tw =
+            0.4 +
+            0.6 *
+              Math.abs(
+                Math.sin(p.userData.age * 0.001 * p.userData.twinkleSpeed + p.userData.twinklePhase)
+              );
+          p.material.opacity = tw * Math.pow(1 - visT, 1.4);
+          break;
+        }
         case 'shatter':
         default: {
           p.userData.vy -= 2.5 * dt;
@@ -269,6 +375,8 @@ export function createParticleSystem({ boardGroup }) {
   return {
     shatter,
     sparkle,
+    streaks,
+    glitter,
     pulseRing,
     hexPulse,
     implode,

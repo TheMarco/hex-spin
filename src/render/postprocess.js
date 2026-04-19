@@ -63,10 +63,119 @@ export function createComposer({ renderer, scene, camera }) {
   );
   mixPass.needsSwap = true;
 
+  const shockUniforms = {
+    tDiffuse: { value: null },
+    uCenter: { value: new THREE.Vector2(0, 0) },
+    uTime: { value: 1 },
+    uAmp: { value: 0 },
+    uActive: { value: 0 },
+    uAspect: { value: size.x / size.y },
+  };
+  const shockPass = new ShaderPass(
+    new THREE.ShaderMaterial({
+      uniforms: shockUniforms,
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tDiffuse;
+        uniform vec2 uCenter;
+        uniform float uTime;
+        uniform float uAmp;
+        uniform float uActive;
+        uniform float uAspect;
+        varying vec2 vUv;
+        void main() {
+          vec3 color = texture2D(tDiffuse, vUv).rgb;
+          if (uActive > 0.5) {
+            vec2 centerUv = uCenter * 0.5 + 0.5;
+            vec2 toCenter = vUv - centerUv;
+            vec2 corrected = vec2(toCenter.x * uAspect, toCenter.y);
+            // Flat-top hex distance — matches the board silhouette so the
+            // shockwave reads as a hex pulse, not a circular ripple.
+            vec2 a = abs(corrected);
+            float dist = max(a.y / 0.86602540378, a.x + a.y * 0.57735026919);
+            float radius = uTime * 0.85;
+            float thickness = 0.07;
+            float ring = smoothstep(thickness, 0.0, abs(dist - radius));
+            float falloff = pow(1.0 - uTime, 1.5);
+            float displacement = ring * uAmp * falloff;
+            vec2 dir = toCenter / max(length(toCenter), 1e-5);
+            vec2 distortedUv = vUv - dir * displacement;
+            vec3 base = texture2D(tDiffuse, distortedUv).rgb;
+            vec3 cR = texture2D(tDiffuse, distortedUv + dir * displacement * 0.45).rgb;
+            vec3 cB = texture2D(tDiffuse, distortedUv - dir * displacement * 0.45).rgb;
+            vec3 chroma = vec3(cR.r, base.g, cB.b);
+            color = mix(base, chroma, ring);
+            color += vec3(0.55, 0.75, 1.0) * ring * falloff * 0.45;
+          }
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    }),
+    'tDiffuse'
+  );
+
   const finalComposer = new EffectComposer(renderer);
   finalComposer.addPass(renderPass);
   finalComposer.addPass(mixPass);
+  finalComposer.addPass(shockPass);
   finalComposer.addPass(new OutputPass());
+
+  const baseStrength = BLOOM_STRENGTH;
+  let kickAmp = 0;
+  let kickAge = 0;
+  let kickDur = 0;
+  let shockAge = 0;
+  let shockDur = 0;
+  let lastRenderMs = null;
+
+  function kickBloom(amount, durMs = 350) {
+    if (amount > kickAmp * Math.max(0, 1 - kickAge / Math.max(kickDur, 1))) {
+      kickAmp = amount;
+      kickDur = durMs;
+      kickAge = 0;
+    }
+  }
+
+  function triggerShockwave({ ndc, durMs = 480, amp = 0.014 }) {
+    shockUniforms.uCenter.value.copy(ndc);
+    shockUniforms.uAmp.value = amp;
+    shockDur = durMs;
+    shockAge = 0;
+  }
+
+  function tickEffects(dt) {
+    if (kickDur > 0) {
+      kickAge += dt;
+      const t = Math.min(kickAge / kickDur, 1);
+      const decay = Math.pow(1 - t, 2);
+      bloomPass.strength = baseStrength + kickAmp * decay;
+      if (t >= 1) {
+        kickAmp = 0;
+        kickDur = 0;
+        bloomPass.strength = baseStrength;
+      }
+    } else {
+      bloomPass.strength = baseStrength;
+    }
+    if (shockDur > 0) {
+      shockAge += dt;
+      const t = Math.min(shockAge / shockDur, 1);
+      shockUniforms.uTime.value = t;
+      shockUniforms.uActive.value = 1;
+      if (t >= 1) {
+        shockDur = 0;
+        shockUniforms.uActive.value = 0;
+      }
+    } else {
+      shockUniforms.uActive.value = 0;
+    }
+  }
 
   const stashed = new Map();
   function darkenNonBloomed(obj) {
@@ -84,6 +193,10 @@ export function createComposer({ renderer, scene, camera }) {
   }
 
   function render() {
+    const now = performance.now();
+    const dt = lastRenderMs == null ? 16 : Math.min(now - lastRenderMs, 100);
+    lastRenderMs = now;
+    tickEffects(dt);
     // Pass 1: bloom only — darken non-bloom objects, render, extract bloom.
     scene.traverse(darkenNonBloomed);
     bloomComposer.render();
@@ -96,7 +209,8 @@ export function createComposer({ renderer, scene, camera }) {
     bloomComposer.setSize(width, height);
     finalComposer.setSize(width, height);
     bloomPass.setSize(width, height);
+    shockUniforms.uAspect.value = width / height;
   }
 
-  return { render, setSize, bloomPass };
+  return { render, setSize, bloomPass, kickBloom, triggerShockwave };
 }

@@ -92,7 +92,18 @@ function fitCamera(w, h) {
 }
 fitCamera(window.innerWidth, window.innerHeight);
 
-const { render: renderFrame, setSize } = createComposer({ renderer, scene, camera });
+const {
+  render: renderFrame,
+  setSize,
+  kickBloom,
+  triggerShockwave,
+} = createComposer({ renderer, scene, camera });
+
+const _ndc = new THREE.Vector3();
+function worldToNdc(worldX, worldY) {
+  _ndc.set(worldX, worldY, 0).project(camera);
+  return new THREE.Vector2(_ndc.x, _ndc.y);
+}
 
 const vertexDots = createVertexDots({ board, boardGroup });
 const particles = createParticleSystem({ boardGroup });
@@ -123,6 +134,7 @@ function applyTrianglePhaseStyle(phase) {
 }
 
 const cameraOrigin = camera.position.clone();
+const BASE_FOV = camera.fov;
 let shakeAmp = 0;
 let shakeAge = 0;
 let shakeDur = 0;
@@ -130,6 +142,15 @@ function shake(amp, durMs) {
   shakeAmp = Math.max(shakeAmp, amp);
   shakeDur = Math.max(shakeDur, durMs);
   shakeAge = 0;
+}
+
+let fovKickAmp = 0;
+let fovKickAge = 0;
+let fovKickDur = 0;
+function fovPunch(amount, durMs) {
+  fovKickAmp = Math.max(fovKickAmp, amount);
+  fovKickDur = Math.max(fovKickDur, durMs);
+  fovKickAge = 0;
 }
 
 const pointer = setupPointer({
@@ -173,12 +194,16 @@ function handleTap(k, j) {
       onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
         const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
         let waveHasBonus = false;
+        let sumX = 0;
+        let sumY = 0;
         for (const h of hexes) {
           const bonus = Boolean(newColor && h.color === newColor);
           if (bonus) waveHasBonus = true;
           const points = bonus ? pointsPerHex * NEW_COLOR_BONUS_MULT : pointsPerHex;
           gameState.score += points;
           const [hx, hy] = vPos(h.k, h.j);
+          sumX += hx;
+          sumY += hy;
           hud.spawnFloatingScore(
             hx + boardGroup.position.x,
             hy + boardGroup.position.y,
@@ -191,7 +216,19 @@ function handleTap(k, j) {
         playImplodeWhoosh();
         playHexClear(cascade, { bonus: waveHasBonus });
         playExtraBonus({ cascade, freshMult });
-        if (cascade >= 2) shake(0.03 * cascade, 300);
+
+        const cx = sumX / hexes.length + boardGroup.position.x;
+        const cy = sumY / hexes.length + boardGroup.position.y;
+        const ndc = worldToNdc(cx, cy);
+        const cascadeBoost = Math.min(cascade - 1, 4);
+        kickBloom(0.85 + 0.35 * cascadeBoost + (waveHasBonus ? 0.25 : 0), 360);
+        triggerShockwave({
+          ndc,
+          durMs: 460 + 60 * cascadeBoost,
+          amp: 0.012 + 0.005 * cascadeBoost + (waveHasBonus ? 0.004 : 0),
+        });
+        shake(0.012 + 0.018 * cascade, 220 + 40 * cascade);
+        if (cascade >= 2) fovPunch(1.4 + 0.6 * cascadeBoost, 240);
         hud.refresh();
       },
       onPhaseChange: async (newPhase) => {
@@ -386,6 +423,20 @@ function frame(timeMs) {
         cameraOrigin.y + (Math.random() - 0.5) * 2 * amp,
         cameraOrigin.z
       );
+    }
+  }
+
+  if (fovKickDur > 0) {
+    fovKickAge += dt;
+    const t = Math.min(fovKickAge / fovKickDur, 1);
+    const eased = Math.pow(1 - t, 2);
+    camera.fov = BASE_FOV - fovKickAmp * eased;
+    camera.updateProjectionMatrix();
+    if (t >= 1) {
+      camera.fov = BASE_FOV;
+      camera.updateProjectionMatrix();
+      fovKickDur = 0;
+      fovKickAmp = 0;
     }
   }
 

@@ -120,11 +120,16 @@ export function createBackground({ scene }) {
   // =========================================================================
   // Forward-motion starfield (hyperspace feel, soothing pace)
   // =========================================================================
-  const STAR_COUNT = 3500;
+  const STAR_COUNT = 5500;
   const DEPTH_NEAR = 6; // closest world-z depth before a star wraps
   const DEPTH_FAR = 160;
   const DEPTH_RANGE = DEPTH_FAR - DEPTH_NEAR;
-  const SPREAD_XY = 48;
+  // Bounding box must exceed the visible frustum at DEPTH_FAR on every supported
+  // aspect ratio, otherwise the box edge appears as a hard seam in the sky.
+  // Worst cases: tall portrait pulls the camera back (fitCamera) → big visible Y;
+  // ultrawide widens visible X.
+  const SPREAD_X = 140;
+  const SPREAD_Y = 100;
 
   const positions = new Float32Array(STAR_COUNT * 3);
   const sizes = new Float32Array(STAR_COUNT);
@@ -134,8 +139,8 @@ export function createBackground({ scene }) {
   const starPaletteIndex = new Uint8Array(STAR_COUNT);
 
   for (let i = 0; i < STAR_COUNT; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 2 * SPREAD_XY;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * SPREAD_XY;
+    positions[i * 3] = (Math.random() - 0.5) * 2 * SPREAD_X;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * SPREAD_Y;
     // Initial phase within the depth cycle — staggers stars evenly along z.
     positions[i * 3 + 2] = Math.random() * DEPTH_RANGE;
 
@@ -165,6 +170,7 @@ export function createBackground({ scene }) {
       uSpeed: { value: 9.0 },
       uDepthRange: { value: DEPTH_RANGE },
       uDepthNear: { value: DEPTH_NEAR },
+      uSpread: { value: new THREE.Vector2(SPREAD_X, SPREAD_Y) },
     },
     vertexShader: /* glsl */ `
       attribute float size;
@@ -175,6 +181,7 @@ export function createBackground({ scene }) {
       uniform float uSpeed;
       uniform float uDepthRange;
       uniform float uDepthNear;
+      uniform vec2 uSpread;
       varying vec3 vColor;
       varying float vTwinkle;
       varying float vSpike;
@@ -199,7 +206,11 @@ export function createBackground({ scene }) {
         float depth = -mvPosition.z;
         float fadeIn = smoothstep(uDepthNear + uDepthRange, uDepthNear + uDepthRange - 22.0, depth);
         float fadeOut = smoothstep(uDepthNear, uDepthNear + 4.0, depth);
-        vFade = fadeIn * fadeOut;
+        // Soft edge fade in world XY so the box boundary is invisible if the
+        // visible frustum still grazes it on extreme aspect ratios.
+        float edgeX = smoothstep(uSpread.x, uSpread.x * 0.82, abs(position.x));
+        float edgeY = smoothstep(uSpread.y, uSpread.y * 0.82, abs(position.y));
+        vFade = fadeIn * fadeOut * edgeX * edgeY;
 
         gl_PointSize = size * uPixelRatio * (180.0 / max(depth, 0.1));
         gl_Position = projectionMatrix * mvPosition;
