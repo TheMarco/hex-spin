@@ -197,7 +197,8 @@ export function createHowToPlay({ container, onBack, onStart }) {
         </div>
         <p class="howto-body">
           The palette <strong>grows</strong> as you clear hexes. Each new phase swaps the
-          theme, the music, and adds a fresh bonus color to hunt.
+          theme and music, but the board you built stays intact. The fresh bonus
+          color starts seeping in through future refills and edge inflow.
         </p>
         <div class="howto-phases">
           <div class="howto-phase">

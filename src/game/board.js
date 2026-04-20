@@ -70,6 +70,19 @@ export function createPhantomSlots(board, palette) {
   return slots;
 }
 
+// Phase-ups keep the visible board intact, but hidden edge inflow should adopt
+// the expanded palette so the new color can start entering naturally.
+export function reseedPhantomSlots(phantomSlots, palette) {
+  const nextSlots = {};
+  for (const [vertexKey, slotColors] of Object.entries(phantomSlots)) {
+    nextSlots[vertexKey] = {};
+    for (const slotIdx of Object.keys(slotColors)) {
+      nextSlots[vertexKey][slotIdx] = randColor(palette);
+    }
+  }
+  return nextSlots;
+}
+
 export function isValidVertex(k, j, board) {
   if (!isRealVertex(k, j)) return false;
   const ts = ring(k, j);

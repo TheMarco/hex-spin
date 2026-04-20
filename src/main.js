@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createScene, mountBoard, unmountBoard } from './render/scene.js';
-import { createBoard, createPhantomSlots } from './game/board.js';
+import { createBoard, createPhantomSlots, reseedPhantomSlots } from './game/board.js';
 import {
   NEW_COLOR_BONUS_MULT,
   getThemeCssVars,
@@ -156,18 +156,10 @@ const pointer = setupPointer({
   onTap: handleTap,
 });
 
-async function repaintBoardForPhase(newPhase) {
-  const palette = gameState.activeColors;
-  await Promise.all(Object.values(triangleViews).map((v) => v.fade?.(0, 260)));
+async function refreshBoardForPhase(newPhase) {
   applyTrianglePhaseStyle(newPhase);
-  const fresh = createBoard(palette);
-  for (const k of Object.keys(board)) {
-    const c = fresh[k].color;
-    board[k].color = c;
-    triangleViews[k].setColor(c);
-  }
-  phantomSlots = createPhantomSlots(board, palette);
-  await Promise.all(Object.values(triangleViews).map((v) => v.fade?.(1, 320)));
+  phantomSlots = reseedPhantomSlots(phantomSlots, gameState.activeColors);
+  await Promise.all(Object.values(triangleViews).map((v) => v.flash?.(240)));
 }
 
 // Short grace window after a spin completes ≥1 hex: another tap within this
@@ -229,7 +221,7 @@ const gameHooks = {
     hud.refresh();
     overlay.playPhaseTransition(newPhase);
     playPhaseTransitionSfx(newPhase);
-    await repaintBoardForPhase(newPhase);
+    await refreshBoardForPhase(newPhase);
   },
 };
 

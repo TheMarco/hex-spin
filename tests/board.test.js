@@ -5,9 +5,10 @@ import {
   isValidVertex,
   listValidVertices,
   realRingCount,
+  reseedPhantomSlots,
 } from '../src/game/board.js';
 import { isUpTriangle, HEX_SIDE } from '../src/utils/math.js';
-import { PHASE_PALETTES } from '../src/utils/colors.js';
+import { NEON, PHASE_PALETTES } from '../src/utils/colors.js';
 
 describe('createBoard', () => {
   it('produces 6 × HEX_SIDE² triangles (hex-shaped field)', () => {
@@ -59,6 +60,31 @@ describe('createPhantomSlots', () => {
       const phantomCount = Object.keys(slots[vertexKey]).length;
       expect(realCount + phantomCount).toBe(6);
     }
+  });
+});
+
+describe('reseedPhantomSlots', () => {
+  const board = createBoard(PHASE_PALETTES[1]);
+  const slots = createPhantomSlots(board, PHASE_PALETTES[1]);
+
+  it('preserves the existing phantom-slot structure', () => {
+    const reseeded = reseedPhantomSlots(slots, [NEON.orange]);
+    expect(Object.keys(reseeded)).toEqual(Object.keys(slots));
+    for (const vertexKey of Object.keys(slots)) {
+      expect(Object.keys(reseeded[vertexKey])).toEqual(Object.keys(slots[vertexKey]));
+    }
+  });
+
+  it('recolors hidden edge inflow from the supplied palette without mutating input', () => {
+    const original = JSON.parse(JSON.stringify(slots));
+    const reseeded = reseedPhantomSlots(slots, [NEON.orange]);
+
+    for (const vertexKey of Object.keys(reseeded)) {
+      for (const slotIdx of Object.keys(reseeded[vertexKey])) {
+        expect(reseeded[vertexKey][slotIdx]).toBe(NEON.orange);
+      }
+    }
+    expect(slots).toEqual(original);
   });
 });
 
