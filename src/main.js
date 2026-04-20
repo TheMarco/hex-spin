@@ -21,6 +21,7 @@ import { createHUD } from './ui/hud.js';
 import { createOverlay } from './ui/overlay.js';
 import { createHowToPlay } from './ui/howToPlay.js';
 import { createAbout } from './ui/about.js';
+import { createInstallPrompt } from './ui/installPrompt.js';
 import {
   gameState,
   resetGameState,
@@ -403,10 +404,13 @@ function showTitleScreen() {
   `;
   hudContainer.appendChild(el);
 
+  const installPrompt = createInstallPrompt({ container: hudContainer });
+
   const startGame = () => {
     el.classList.add('dismissed');
     setTimeout(() => el.remove(), 400);
     gameState.status = 'idle';
+    installPrompt?.dismiss();
     initAudio();
   };
 

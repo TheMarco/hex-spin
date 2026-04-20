@@ -1480,6 +1480,93 @@ body {
   padding-top: 2px;
 }
 
+/* Install PWA banner (mobile only, shown on title screen) */
+.install-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(5, 6, 14, 0.92);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  border-radius: 10px;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--ui-accent) 35%, transparent),
+    inset 0 0 20px color-mix(in srgb, var(--ui-accent) 12%, transparent);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 260ms ease, transform 260ms ease;
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+}
+.install-banner.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.install-banner-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.install-banner-text strong {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--ui-accent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ui-accent) 70%, transparent);
+}
+.install-banner-text em {
+  font-style: normal;
+  color: var(--ui-accent);
+}
+.install-share {
+  display: inline-block;
+  padding: 0 4px;
+  margin: 0 1px;
+  color: var(--ui-accent);
+  text-shadow: 0 0 6px currentColor;
+}
+.install-banner-btn {
+  flex: 0 0 auto;
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  padding: 8px 14px;
+  background: color-mix(in srgb, var(--ui-accent) 18%, rgba(0, 0, 0, 0.6));
+  color: #ffffff;
+  border: 1px solid var(--ui-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--ui-accent) 80%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+.install-banner-btn:active {
+  transform: translateY(1px);
+}
+.install-banner-dismiss {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid color-mix(in srgb, var(--text-dim) 50%, transparent);
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.install-banner-dismiss:active {
+  transform: translateY(1px);
+}
+
 /* Install-as-PWA grid */
 .howto-install-grid {
   display: grid;
