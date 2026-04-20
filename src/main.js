@@ -20,6 +20,7 @@ import { createSeamCurrent } from './render/seam-current.js';
 import { createHUD } from './ui/hud.js';
 import { createOverlay } from './ui/overlay.js';
 import { createHowToPlay } from './ui/howToPlay.js';
+import { createAbout } from './ui/about.js';
 import {
   gameState,
   resetGameState,
@@ -395,6 +396,7 @@ function showTitleScreen() {
       <div class="title-buttons">
         <button class="title-btn title-btn-primary" data-action="start">START</button>
         <button class="title-btn" data-action="howto">HOW TO PLAY</button>
+        <button class="title-btn" data-action="about">ABOUT</button>
       </div>
     </div>
     <div class="title-footer">Copyright 2026 \u00A9 AI &amp; Design Game Studios</div>
@@ -415,6 +417,13 @@ function showTitleScreen() {
       container: hudContainer,
       onBack: () => el.classList.remove('behind-howto'),
       onStart: startGame,
+    });
+  });
+  el.querySelector('[data-action="about"]').addEventListener('click', () => {
+    el.classList.add('behind-howto');
+    createAbout({
+      container: hudContainer,
+      onBack: () => el.classList.remove('behind-howto'),
     });
   });
 }
