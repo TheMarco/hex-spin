@@ -6,7 +6,7 @@ export function createAbout({ container, onBack }) {
       <header class="about-header">
         <div class="about-kicker">[ TRANSMISSION // FROM THE DEV ]</div>
         <h1 class="about-title">ABOUT</h1>
-        <div class="about-tag">A small story about Hex Spin &amp; the person behind it.</div>
+        <div class="about-tag">A small story about Rotatron &amp; the person behind it.</div>
       </header>
 
       <section class="about-section">
@@ -27,7 +27,7 @@ export function createAbout({ container, onBack }) {
           small, sharp artifact I can point at and say &ldquo;here, this is what I can do.&rdquo;
         </p>
         <p class="about-body">
-          Hex Spin is a <strong>fully original idea</strong> &mdash; no clone, no reskin. One tap,
+          Rotatron is a <strong>fully original idea</strong> &mdash; no clone, no reskin. One tap,
           six triangles rotate, colors carry around the ring, and if you line up a hex it
           shatters. Everything else in the game grew out of that single rule.
         </p>
@@ -39,7 +39,7 @@ export function createAbout({ container, onBack }) {
           <h2>A LABOR OF LOVE</h2>
         </div>
         <p class="about-body">
-          Hex Spin is <strong>free</strong>. No ads, no trackers, no paywall, no &ldquo;energy&rdquo;
+          Rotatron is <strong>free</strong>. No ads, no trackers, no paywall, no &ldquo;energy&rdquo;
           meter that wants your wallet. I made it because I wanted it to exist, and because
           I hoped someone else out there would love it too.
         </p>
@@ -64,7 +64,7 @@ export function createAbout({ container, onBack }) {
           <h2>MORE OF MY WORK</h2>
         </div>
         <p class="about-body">
-          Hex Spin is one piece of a bigger picture. If you want to see the
+          Rotatron is one piece of a bigger picture. If you want to see the
           <em>other</em> games I've built &mdash; along with the rest of what I'm up to
           as a designer, developer, and AI tinkerer &mdash; everything lives on my
           personal site.
@@ -84,7 +84,7 @@ export function createAbout({ container, onBack }) {
           <h2>HOW IT WAS BUILT</h2>
         </div>
         <p class="about-body">
-          Hex Spin runs on <strong>three.js</strong> &mdash; custom shaders for the nebula and
+          Rotatron runs on <strong>three.js</strong> &mdash; custom shaders for the nebula and
           starfield, selective bloom on the outlines and particles, and a tiny amount of
           board math that turned out to be much trickier than I expected.
         </p>

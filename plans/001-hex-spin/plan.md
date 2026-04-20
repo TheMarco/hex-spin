@@ -1,4 +1,4 @@
-# Hex Spin — Implementation Plan
+# Rotatron — Implementation Plan
 
 ## Context
 

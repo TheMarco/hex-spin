@@ -392,7 +392,7 @@ function showTitleScreen() {
   el.className = 'title-screen';
   el.innerHTML = `
     <div class="title-inner">
-      <img class="title-logo" src="${logoUrl}" alt="Hex Spin" />
+      <img class="title-logo" src="${logoUrl}" alt="Rotatron" />
       <div class="title-buttons">
         <button class="title-btn title-btn-primary" data-action="start">START</button>
         <button class="title-btn" data-action="howto">HOW TO PLAY</button>
@@ -428,6 +428,12 @@ function showTitleScreen() {
   });
 }
 showTitleScreen();
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 
 function frame(timeMs) {
   if (isPaused()) {

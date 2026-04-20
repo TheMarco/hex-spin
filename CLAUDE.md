@@ -1,4 +1,4 @@
-# CLAUDE.md — Hex Spin
+# CLAUDE.md — Rotatron
 
 Neon/cyberpunk arcade puzzle. Tap a vertex on a hex-shaped triangle grid, six triangles rotate 60° CW carrying their colors around the ring, matching hexes shatter. A heat bar drains constantly and clears refill it; empty heat ends the run.
 
@@ -14,6 +14,7 @@ The current code is the source of truth. If this file and the implementation div
 - **ESLint flat config** + **Prettier**
 - Plain JS modules, no TypeScript
 - **Sample-based audio**: WebAudio `AudioBufferSourceNode` playback for SFX plus one theme-selected looped `HTMLAudioElement` for background music
+- **Installable PWA**: `public/manifest.webmanifest` (`display: fullscreen`, standalone fallback) + `public/sw.js` service worker (cache-first with network fallback, registered only in production builds via `import.meta.env.PROD`). iOS uses `apple-mobile-web-app-capable` + `black-translucent` status bar for chromeless launch; heat rail respects `env(safe-area-inset-top)`.
 
 Scripts:
 - `npm run dev` — Vite on `http://localhost:5173`

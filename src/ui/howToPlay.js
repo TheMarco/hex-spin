@@ -261,6 +261,53 @@ export function createHowToPlay({ container, onBack, onStart }) {
         </ul>
       </section>
 
+      <section class="howto-section">
+        <div class="howto-card-head">
+          <span class="howto-num">08</span>
+          <h2>INSTALL AS APP</h2>
+        </div>
+        <p class="howto-body">
+          Rotatron can be <strong>installed</strong> on your phone, tablet, or desktop.
+          It runs <strong>fullscreen</strong> with no browser chrome, launches from your home screen
+          or dock, and keeps working offline after the first load.
+        </p>
+        <div class="howto-install-grid">
+          <div class="howto-install">
+            <div class="howto-install-head" style="--mc:${C}">
+              <span class="howto-install-tag">iOS</span>
+              <span class="howto-install-sub">Safari</span>
+            </div>
+            <ol class="howto-install-steps">
+              <li>Tap the <strong>Share</strong> icon <span class="howto-kbd">&#x2B06;</span> at the bottom.</li>
+              <li>Scroll down, tap <strong>Add to Home Screen</strong>.</li>
+              <li>Tap <strong>Add</strong>. Launch from your home screen for fullscreen play.</li>
+            </ol>
+          </div>
+          <div class="howto-install">
+            <div class="howto-install-head" style="--mc:${G}">
+              <span class="howto-install-tag">Android</span>
+              <span class="howto-install-sub">Chrome</span>
+            </div>
+            <ol class="howto-install-steps">
+              <li>Tap the <strong>&#8942; menu</strong> in the top-right.</li>
+              <li>Choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</li>
+              <li>Confirm <strong>Install</strong>. Launch from your home screen for fullscreen play.</li>
+            </ol>
+          </div>
+          <div class="howto-install">
+            <div class="howto-install-head" style="--mc:${Y}">
+              <span class="howto-install-tag">Desktop</span>
+              <span class="howto-install-sub">Chrome / Edge</span>
+            </div>
+            <ol class="howto-install-steps">
+              <li>Click the <strong>install</strong> icon in the address bar.</li>
+              <li>Or open the <strong>&#8942; menu</strong> → <strong>Install Rotatron&hellip;</strong></li>
+              <li>Launches in its own window, like a native app.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
       <div class="howto-footer-actions">
         <button class="howto-btn" data-action="back">◀ BACK</button>
         <button class="howto-btn howto-btn-primary" data-action="start">START GAME ▶</button>

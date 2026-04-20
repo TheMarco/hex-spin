@@ -386,7 +386,8 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 32px;
+  height: calc(32px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: color-mix(in srgb, var(--ui-accent) 6%, rgba(0, 0, 0, 0.72));
   border-bottom: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
   box-shadow:
@@ -397,7 +398,8 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 0 18px;
+  padding-left: 18px;
+  padding-right: 18px;
   font-family: 'Hyperspace', 'JetBrains Mono', monospace;
 }
 .heat-label {
@@ -1476,6 +1478,67 @@ body {
   text-shadow: 0 0 8px currentColor;
   text-align: center;
   padding-top: 2px;
+}
+
+/* Install-as-PWA grid */
+.howto-install-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.howto-install {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid color-mix(in srgb, var(--mc, var(--ui-accent)) 40%, transparent);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--mc, var(--ui-accent)) 22%, transparent) inset;
+}
+.howto-install-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--mc, var(--ui-accent)) 40%, transparent);
+}
+.howto-install-tag {
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: var(--mc, var(--ui-accent));
+  text-shadow: 0 0 8px currentColor;
+}
+.howto-install-sub {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.howto-install-steps {
+  list-style: decimal;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.howto-install-steps li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-main);
+}
+.howto-install-steps strong {
+  color: var(--mc, var(--ui-accent));
+  text-shadow: 0 0 6px color-mix(in srgb, var(--mc, var(--ui-accent)) 60%, transparent);
+}
+.howto-kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  font-size: 11px;
+  border: 1px solid color-mix(in srgb, var(--mc, var(--ui-accent)) 50%, transparent);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--mc, var(--ui-accent));
 }
 
 /* Footer actions */

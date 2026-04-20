@@ -1,0 +1,33 @@
+{
+  "name": "Rotatron",
+  "short_name": "Rotatron",
+  "description": "Neon/cyberpunk arcade puzzle — spin the ring, match the hex, don't let the heat die.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#04040a",
+  "theme_color": "#04040a",
+  "categories": ["games", "arcade", "puzzle"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

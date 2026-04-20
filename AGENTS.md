@@ -1,4 +1,4 @@
-# AGENTS.md — Hex Spin
+# AGENTS.md — Rotatron
 
 Neon/cyberpunk arcade puzzle. Tap a vertex on a hex-shaped triangle grid, six triangles rotate 60° CW carrying their colors around the ring, matching hexes shatter. Heat bar drains over time; only clears keep the run alive.
 
