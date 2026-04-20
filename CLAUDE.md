@@ -37,7 +37,7 @@ src/
   main.js           Bootstrap: scene, board, input, HUD, audio, RAF loop
   style-showcase.js Standalone renderer for the four phase inner-style samples with their fixed phase themes
   game/
-    board.js        Hex board creation, phantom slot seeding, valid vertex checks
+    board.js        Hex board creation, phantom slot seeding + phase reseeding, valid vertex checks
     rules.js        Completed-hex detection, cascade loop, scoring math
     spin.js         Pivot rotation, ghost promotion/disposal, ring remapping
     spin-model.js   Pure clockwise ring carry/remap bookkeeping for spin.js
@@ -177,8 +177,9 @@ Heat is the run timer in `src/game/state.js`.
   - `gameState.phase`
   - `gameState.activeColors`
 - Existing triangles are not recolored on phase change.
-- Existing triangles do restyle their **inner detail layer** on phase change.
-- The effect of a new phase is that future refills and future new boards can draw from a larger palette.
+- Existing triangles do restyle their **inner detail layer** on phase change, and each triangle view plays a brief outline flash (`flash(240)`) to mark the transition.
+- Phantom slots are **reseeded** on phase change via `reseedPhantomSlots(phantomSlots, activeColors)` in `src/game/board.js`. The set of phantom slot positions is preserved, but their hidden colors are re-rolled from the expanded palette so the new phase color can start entering the board through edge-vertex spins immediately.
+- Phase transitions do **not** regenerate the visible board (the previous `repaintBoardForPhase` fade-out/refill path was removed); the board the player built carries over, and the new color arrives organically through future refills and edge inflow. The orchestrator on phase change is `refreshBoardForPhase(newPhase)` in `src/main.js`.
 - `PHASE_NEW_COLOR` marks the newly introduced color for bonus scoring in that phase.
 
 ### Phase Themes
