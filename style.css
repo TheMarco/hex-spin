@@ -1487,6 +1487,7 @@ body {
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 310;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 10px;

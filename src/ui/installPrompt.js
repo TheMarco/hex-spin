@@ -43,8 +43,16 @@ function rememberDismiss() {
   }
 }
 
+function isInIframe() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 export function createInstallPrompt({ container }) {
-  if (isStandalone() || wasRecentlyDismissed() || !isMobile()) return null;
+  if (isStandalone() || wasRecentlyDismissed() || !isMobile() || isInIframe()) return null;
 
   let deferredPrompt = null;
   let banner = null;
