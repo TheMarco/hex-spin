@@ -1486,7 +1486,7 @@ body {
   left: 12px;
   right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  z-index: 60;
+  z-index: 310;
   display: flex;
   align-items: center;
   gap: 10px;
