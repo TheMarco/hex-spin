@@ -61,7 +61,7 @@ body {
 
 .hud-row {
   position: fixed;
-  top: 44px;
+  top: calc(44px + env(safe-area-inset-top, 0px));
   left: 40px;
   right: 40px;
   display: flex;
@@ -298,7 +298,7 @@ body {
     left: 6px;
     right: 6px;
     gap: 6px;
-    top: 40px;
+    top: calc(40px + env(safe-area-inset-top, 0px));
     justify-content: stretch;
   }
   .hud-top-left,
@@ -876,7 +876,7 @@ body {
 .mute-btn,
 .pause-btn {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 50%, transparent);

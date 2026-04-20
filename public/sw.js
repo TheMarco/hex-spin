@@ -19,11 +19,34 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-first for navigations (HTML) so deploys propagate on the first load.
+// Cache-first for everything else (hashed JS/CSS/images are effectively
+// immutable, fonts, icons). Always refresh the cache in the background.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  const isNavigation =
+    req.mode === 'navigate' ||
+    (req.destination === 'document') ||
+    (req.headers.get('accept') || '').includes('text/html');
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(req)
+        .then((resp) => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((cache) => cache.put(req, copy));
+          }
+          return resp;
+        })
+        .catch(() => caches.match(req).then((c) => c || caches.match('./index.html'))),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then((cached) => {
