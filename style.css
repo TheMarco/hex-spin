@@ -328,6 +328,42 @@ body {
   .elim-banner-points { font-size: 30px; }
 }
 
+.multikill-banner {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  text-align: center;
+  letter-spacing: 0.18em;
+  pointer-events: none;
+  text-shadow: 0 0 10px currentColor, 0 0 22px currentColor;
+  animation: multikill-pop 1.2s cubic-bezier(0.18, 0.9, 0.3, 1.1) forwards;
+}
+.multikill-banner-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.multikill-banner-points {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+@keyframes multikill-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.14); }
+  40% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -70%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -95%) scale(0.95); }
+}
+
+@media (max-width: 720px) {
+  .multikill-banner-title { font-size: 14px; }
+  .multikill-banner-points { font-size: 24px; }
+}
+
 
 @media (max-width: 720px) {
   .hud-row {

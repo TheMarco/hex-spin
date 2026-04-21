@@ -23,11 +23,14 @@ export const FRESH_BONUS_MAX = 1000;
 export const FRESH_BONUS_MIN = 100;
 export const FRESH_BONUS_STEP = 100;
 
-// Color elimination — clearing the last triangle of a color awards a flat
-// bonus (scaled by phase) and locks that color out of refills for a few spins,
-// giving the player a temporary thinned-palette window to chain follow-ups.
+// Color elimination — clearing the last triangle of a color awards a bonus
+// (scaled by freshMult × phase) and locks that color out of refills for a few
+// spins, giving the player a temporary thinned-palette window to chain
+// follow-ups. Base tuned so a fresh phase-4 elimination (≈24K) is roughly on
+// par with a hard-earned dual kill but doesn't eclipse it, since color
+// elimination is comparatively easy to trigger incidentally.
 // No heat reward — that made survival too easy.
-export const COLOR_ELIM_BONUS_BASE = 5000;
+export const COLOR_ELIM_BONUS_BASE = 1500;
 export const COLOR_ELIM_SUPPRESSION_SPINS = 4;
 
 export function drainMultiplierForPhase(phase) {

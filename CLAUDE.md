@@ -143,26 +143,29 @@ plans/              Scratch notes, not imported into runtime code
 ### Color elimination
 
 - After a wave's triangles fade out and **before** they refill, `resolveCompletions` checks which `activeColors` are absent from the non-affected cells and not already suppressed.
-- Each newly-eliminated color is added to `gameState.suppressedColors` (count = `COLOR_ELIM_SUPPRESSION_SPINS`, default `4`) and the `hooks.onColorEliminated({ colors, cascade, phase })` hook is called.
+- Each newly-eliminated color is added to `gameState.suppressedColors` (count = `COLOR_ELIM_SUPPRESSION_SPINS`, default `4`) and the `hooks.onColorEliminated({ colors, cascade, phase, freshMult })` hook is called.
 - `tickColorSuppression()` runs once per successful spin (in `spin.js` next to `gameState.spins++`); when a counter hits zero the entry is removed.
 - The default refill picker filters `activeColors` by `isColorSuppressed`. If suppression would empty the pool, it falls back to the full `activeColors` so refills can never stall (this matters most in phase 1 where only 3 colors are active).
-- Per eliminated color the main hook awards a flat bonus of `COLOR_ELIM_BONUS_BASE × 2^(phase-1)` (5K / 10K / 20K / 40K), fires the `s-coloreliminated.mp3` sting (pitched up per extra color in the same wave), shows a centered `COLOR CLEARED` banner via `hud.spawnElimBanner`, and kicks bloom + camera shake + FOV punch. Intentionally no heat reward — it would make the suppression window too forgiving.
+- Per eliminated color the main hook awards `COLOR_ELIM_BONUS_BASE × freshMult × 2^(phase-1)` (base = 1,500; fresh-tap phase 4 ≈ 24K, stale phase 1 ≈ 1.65K), fires the `s-coloreliminated.mp3` sting (pitched up per extra color in the same wave), shows a centered `COLOR CLEARED` banner via `hud.spawnElimBanner`, and kicks bloom + camera shake + FOV punch. Intentionally no heat reward — it would make the suppression window too forgiving. The bonus is tuned so a well-timed elimination is roughly on par with a dual kill but never eclipses one, since eliminations fire incidentally more often than a dual can be set up.
 
 ### Scoring
 
 ```text
-pointsPerHex = 100 × freshMult × 2^(phase - 1) × 2^(cascade - 1) × m
-freshMult    = 1 + clamp(1000 − 100·(spinsSinceLastClear − 1), 100, 1000) / 1000
+pointsPerHex    = 100 × freshMult × 2^(phase - 1) × 2^(cascade - 1)
+multiKillBonus  = 100 × shape(m) × freshMult × 2^(phase - 1) × 2^(cascade - 1)   (m ≥ 2)
+shape(m)        = 6 (m=2) | 7.5 (m=3) | 8+(m−4) (m≥4)
+freshMult       = 1 + clamp(1000 − 100·(spinsSinceLastClear − 1), 100, 1000) / 1000
+waveTotal       = m × pointsPerHex + multiKillBonus
 ```
 
-- `m` is the number of hexes completed in that wave.
-- `computeWaveScore()` returns the per-hex payout, not the whole-wave payout.
-- Because `m` is already folded into `pointsPerHex`, total wave payout scales quadratically with simultaneous clears before bonuses.
+- `m` is the number of hexes completed in that wave. `m` does **not** scale per-hex — it only drives the flat multi-kill bonus.
+- `computeWaveScore()` returns the per-hex payout; `computeMultiKillBonus()` returns the wave-level bonus (0 for single-hex waves).
+- The multi-kill shape front-loads at m=2 (dual kill = skillful setup) and tapers for m≥3, since triples+ are mostly RNG from refill luck. Under the old `× m` formula m=3 paid 2× a dual; now they're within ~25%.
 - `freshMult` rewards fast hits: 2.0× on the first spin after the last clear, decaying by 0.1× per spin to a 1.1× floor at spin 10+.
 - Freshness is locked at the start of each cascade so every wave from a single tap shares the same bonus tier.
 - `gameState.spinsSinceLastClear` increments on every spin and resets to 0 after any cascade that clears at least one hex (and on new run).
 - In `src/main.js`, each cleared hex gets an additional `NEW_COLOR_BONUS_MULT = 2` if its color matches `PHASE_NEW_COLOR[gameState.phase]`.
-- Floating score numbers are spawned per cleared hex in screen space via the HUD.
+- Floating score numbers are spawned per cleared hex in screen space via the HUD; the multi-kill bonus pops a centered `DUAL KILL` / `TRIPLE KILL` / `Nx MULTI KILL` banner via `hud.spawnMultiKillBanner`.
 
 ### Heat
 

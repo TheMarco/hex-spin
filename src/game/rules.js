@@ -13,10 +13,23 @@ export const MAX_CASCADE = 50;
 // one synchronous instruction, then we wait this long before the next.
 export const HEX_BEAT_MS = 200;
 
-// Scoring: 100 × freshMult × 2^(phase-1) × 2^(cascade-1) × m
+// Scoring: pointsPerHex = 100 × freshMult × 2^(phase-1) × 2^(cascade-1).
 // freshMult rewards fast hits (2.0× on first spin after last clear → 1.1× floor).
+// `m` (wave size) intentionally does NOT scale per-hex: a dual kill is rewarded
+// via a flat multi-kill bonus (see computeMultiKillBonus) that front-loads at
+// m=2 and tapers for m≥3, since m=2 is skill and m≥3 is usually luck.
 export function computeWaveScore(phase, cascade, m, freshMult = 1) {
-  return 100 * freshMult * Math.pow(2, phase - 1) * Math.pow(2, cascade - 1) * m;
+  return 100 * freshMult * Math.pow(2, phase - 1) * Math.pow(2, cascade - 1);
+}
+
+// Flat bonus applied once per wave when ≥2 hexes pop simultaneously. Scales
+// with freshMult / phase / cascade so it stays proportional to the wave's own
+// per-hex math. Shape front-loads at m=2 (dual kill = skillful setup) and
+// tapers for larger m (deep multis are mostly RNG).
+export function computeMultiKillBonus(m, phase, cascade, freshMult = 1) {
+  if (m < 2) return 0;
+  const shape = m === 2 ? 6 : m === 3 ? 7.5 : 8 + (m - 4);
+  return 100 * shape * freshMult * Math.pow(2, phase - 1) * Math.pow(2, cascade - 1);
 }
 
 export function findCompletedHexes(board) {
@@ -78,7 +91,14 @@ export async function resolveCompletions(ctx) {
     totalHexes += done.length;
 
     const pointsPerHex = computeWaveScore(gameState.phase, cascade, done.length, freshMult);
-    if (onCascadeWave) onCascadeWave({ cascade, hexes: done, pointsPerHex, freshMult });
+    const multiKillBonus = computeMultiKillBonus(
+      done.length,
+      gameState.phase,
+      cascade,
+      freshMult,
+    );
+    if (onCascadeWave)
+      onCascadeWave({ cascade, hexes: done, pointsPerHex, multiKillBonus, freshMult });
 
     const affectedKeys = new Set();
     for (const d of done) for (const [c, r] of d.ts) affectedKeys.add(key(c, r));
@@ -119,7 +139,12 @@ export async function resolveCompletions(ctx) {
     );
     if (eliminated.length > 0) {
       for (const c of eliminated) suppressColor(c);
-      hooks?.onColorEliminated?.({ colors: eliminated, cascade, phase: gameState.phase });
+      hooks?.onColorEliminated?.({
+        colors: eliminated,
+        cascade,
+        phase: gameState.phase,
+        freshMult,
+      });
     }
 
     // Refill — only visible triangles get new colors. Phantom slots are sacred.

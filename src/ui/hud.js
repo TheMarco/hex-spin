@@ -92,6 +92,19 @@ export function createHUD({ container, camera }) {
     setTimeout(() => el.remove(), 1500);
   }
 
+  function spawnMultiKillBanner(m, points, color) {
+    const label = m === 2 ? 'DUAL KILL' : m === 3 ? 'TRIPLE KILL' : `${m}× MULTI KILL`;
+    const el = document.createElement('div');
+    el.className = 'multikill-banner';
+    if (color) el.style.color = color;
+    el.innerHTML = `
+      <div class="multikill-banner-title">${label}</div>
+      <div class="multikill-banner-points">+${points.toLocaleString()}</div>
+    `;
+    floatLayer.appendChild(el);
+    setTimeout(() => el.remove(), 1200);
+  }
+
   function updateHeat(heat) {
     const heatColors = getThemeHeatColors(getThemeIdForPhase(gameState.phase));
     const clamped = Math.max(0, Math.min(1, heat));
@@ -112,5 +125,5 @@ export function createHUD({ container, camera }) {
   refresh();
   updateHeat(0.7);
 
-  return { refresh, spawnFloatingScore, spawnElimBanner, updateHeat };
+  return { refresh, spawnFloatingScore, spawnElimBanner, spawnMultiKillBanner, updateHeat };
 }

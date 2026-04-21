@@ -184,7 +184,7 @@ const gameHooks = {
   onSpinStart: () => {
     playSpin();
   },
-  onCascadeWave: ({ cascade, hexes, pointsPerHex, freshMult }) => {
+  onCascadeWave: ({ cascade, hexes, pointsPerHex, multiKillBonus, freshMult }) => {
     const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
     let waveHasBonus = false;
     for (const h of hexes) {
@@ -200,6 +200,11 @@ const gameHooks = {
         h.color,
         bonus
       );
+    }
+    if (multiKillBonus > 0) {
+      const rounded = Math.round(multiKillBonus);
+      gameState.score += rounded;
+      hud.spawnMultiKillBanner(hexes.length, rounded, hexes[0]?.color);
     }
     addHeat(heatGainFromWave(hexes.length));
     playImplodeWhoosh();
@@ -219,8 +224,8 @@ const gameHooks = {
     const bonus = Boolean(newColor && hex.color === newColor);
     playHexClear(cascade + index, { bonus });
   },
-  onColorEliminated: ({ colors, phase }) => {
-    const bonus = COLOR_ELIM_BONUS_BASE * Math.pow(2, phase - 1);
+  onColorEliminated: ({ colors, phase, freshMult = 1 }) => {
+    const bonus = Math.round(COLOR_ELIM_BONUS_BASE * freshMult * Math.pow(2, phase - 1));
     colors.forEach((color, i) => {
       gameState.score += bonus;
       gameState.colorEliminations++;
