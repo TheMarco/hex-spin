@@ -146,7 +146,7 @@ plans/              Scratch notes, not imported into runtime code
 - Each newly-eliminated color is added to `gameState.suppressedColors` (count = `COLOR_ELIM_SUPPRESSION_SPINS`, default `4`) and the `hooks.onColorEliminated({ colors, cascade, phase })` hook is called.
 - `tickColorSuppression()` runs once per successful spin (in `spin.js` next to `gameState.spins++`); when a counter hits zero the entry is removed.
 - The default refill picker filters `activeColors` by `isColorSuppressed`. If suppression would empty the pool, it falls back to the full `activeColors` so refills can never stall (this matters most in phase 1 where only 3 colors are active).
-- Per eliminated color the main hook awards a flat bonus of `COLOR_ELIM_BONUS_BASE × 2^(phase-1)` (5K / 10K / 20K / 40K) plus `+COLOR_ELIM_HEAT_BONUS` heat, fires the `s-coloreliminated.mp3` sting (pitched up per extra color in the same wave), shows a centered `COLOR CLEARED` banner via `hud.spawnElimBanner`, and kicks bloom + camera shake + FOV punch.
+- Per eliminated color the main hook awards a flat bonus of `COLOR_ELIM_BONUS_BASE × 2^(phase-1)` (5K / 10K / 20K / 40K), fires the `s-coloreliminated.mp3` sting (pitched up per extra color in the same wave), shows a centered `COLOR CLEARED` banner via `hud.spawnElimBanner`, and kicks bloom + camera shake + FOV punch. Intentionally no heat reward — it would make the suppression window too forgiving.
 
 ### Scoring
 
@@ -173,7 +173,7 @@ Heat is the run timer in `src/game/state.js`.
 - `drainHeat(deltaSeconds)` drains whenever `gameState.status === 'idle'`
 - Current implementation detail: `status` is not switched to a dedicated `spinning` or `resolving` state, so heat also drains during active spin/cascade sequences while `busy === true`
 - Drain rate:
-  - `HEAT_DRAIN_PER_SEC = 0.00805`
+  - `HEAT_DRAIN_PER_SEC = 0.00886`
   - multiplied by `drainMultiplierForPhase(phase)`
 - Heat gain:
   - per cascade wave: `HEAT_HEX_BASE × n²`

@@ -32,7 +32,6 @@ import {
   isHeatEmpty,
   HEAT_PHASE_BONUS,
   COLOR_ELIM_BONUS_BASE,
-  COLOR_ELIM_HEAT_BONUS,
   withBusy,
 } from './game/state.js';
 import { vPos } from './utils/math.js';
@@ -224,7 +223,6 @@ const gameHooks = {
     const bonus = COLOR_ELIM_BONUS_BASE * Math.pow(2, phase - 1);
     colors.forEach((color, i) => {
       gameState.score += bonus;
-      addHeat(COLOR_ELIM_HEAT_BONUS);
       hud.spawnElimBanner(color, bonus);
       playColorEliminated({ extra: i });
     });

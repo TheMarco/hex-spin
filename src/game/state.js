@@ -5,13 +5,13 @@ export const PHASE_THRESHOLDS = { 2: 11, 3: 26, 4: 51 };
 // Heat bar — replaces stones as the run-end mechanic. 0..1 range.
 // Drains while idle, refills on clears. Empty = game over.
 // Drain scales with phase so higher levels feel more urgent:
-//   phase 1: 1.0× (base 0.805%/s → 124s grace)
-//   phase 2: 1.22×                (102s)
-//   phase 3: 1.44×                 (86s)
-//   phase 4: 1.66×                 (75s)
+//   phase 1: 1.0× (base 0.886%/s → 113s grace)
+//   phase 2: 1.22×                 (92s)
+//   phase 3: 1.44×                 (78s)
+//   phase 4: 1.66×                 (68s)
 export const HEAT_START = 1.0;
 export const HEAT_MAX = 1.0;
-export const HEAT_DRAIN_PER_SEC = 0.00805;
+export const HEAT_DRAIN_PER_SEC = 0.00886;
 export const HEAT_PHASE_DRAIN_SCALE = 0.22; // +22% drain per phase beyond 1
 export const HEAT_HEX_BASE = 0.18;
 export const HEAT_PHASE_BONUS = 0.4;
@@ -26,8 +26,8 @@ export const FRESH_BONUS_STEP = 100;
 // Color elimination — clearing the last triangle of a color awards a flat
 // bonus (scaled by phase) and locks that color out of refills for a few spins,
 // giving the player a temporary thinned-palette window to chain follow-ups.
+// No heat reward — that made survival too easy.
 export const COLOR_ELIM_BONUS_BASE = 5000;
-export const COLOR_ELIM_HEAT_BONUS = 0.18;
 export const COLOR_ELIM_SUPPRESSION_SPINS = 4;
 
 export function drainMultiplierForPhase(phase) {

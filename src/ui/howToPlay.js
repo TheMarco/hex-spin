@@ -141,7 +141,7 @@ export function createHowToPlay({ container, onBack, onStart }) {
             <div class="howto-heatbar-fill"></div>
           </div>
           <div class="howto-heatbar-legend">
-            <span><span class="howto-dot" style="background:${C}"></span> Drain &minus;0.8%/sec (faster each phase)</span>
+            <span><span class="howto-dot" style="background:${C}"></span> Drain &minus;0.9%/sec (faster each phase)</span>
             <span><span class="howto-dot" style="background:${Y}"></span> Each clear refills (1 hex = +18%, 2 hexes = +72%, 3 = +162%)</span>
             <span><span class="howto-dot" style="background:${O}"></span> Phase advance bonus +40%</span>
           </div>
@@ -238,10 +238,10 @@ export function createHowToPlay({ container, onBack, onStart }) {
         </div>
         <p class="howto-body">
           Wipe the <strong>last triangle</strong> of any color off the board and you score a
-          fat <strong>+5,000</strong> bonus (×2 each phase: 5K / 10K / 20K / 40K), a hefty
-          shot of heat, and that color is <strong>locked out of refills</strong> for the next
-          few spins. Use the thinned palette window to set up a follow-up combo on the
-          colors that are left.
+          fat <strong>+5,000</strong> bonus (×2 each phase: 5K / 10K / 20K / 40K), and that
+          color is <strong>locked out of refills</strong> for the next few spins. Use the
+          thinned palette window to set up a follow-up combo on the colors that are
+          left &mdash; the heat bar keeps draining, so don't dawdle.
         </p>
         <div class="howto-demo">
           <div class="howto-step">

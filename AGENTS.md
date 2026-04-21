@@ -98,7 +98,7 @@ points_per_hex = 100 × 2^(phase-1) × 2^(cascade-1) × m
 Heat drives the run timer (`src/game/state.js`):
 
 - `heat ∈ [0, 1]`, starts at 1.0, drains while `gameState.status === 'idle'`.
-- Drain rate = `HEAT_DRAIN_PER_SEC × drainMultiplierForPhase(phase)` → ~124s grace in phase 1, ~75s in phase 4.
+- Drain rate = `HEAT_DRAIN_PER_SEC × drainMultiplierForPhase(phase)` → ~113s grace in phase 1, ~68s in phase 4.
 - Each cascade wave adds `HEAT_HEX_BASE × n²` (quadratic — stacking simultaneous hexes is heavily rewarded).
 - Phase transition adds `HEAT_PHASE_BONUS = 0.4`.
 - Empty heat while idle → `status = 'game_over'` → game-over SFX + overlay after 400ms.
