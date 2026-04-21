@@ -51,7 +51,7 @@ export function createBackground({ scene }) {
       return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
     }
 
-    float fbm(vec2 p) {
+    float fbm5(vec2 p) {
       float v = 0.0;
       float a = 0.5;
       for (int i = 0; i < 5; i++) {
@@ -60,6 +60,24 @@ export function createBackground({ scene }) {
         a *= 0.5;
       }
       return v;
+    }
+
+    // Cheaper fbm for the warp field — we don't need the fine detail there.
+    float fbm3(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 3; i++) {
+        v += a * noise(p);
+        p *= 2.0;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    // Ridged noise: 1 - |2n - 1| carves sharp crest lines, good for
+    // filament-like structure found around star-forming regions.
+    float ridged(vec2 p) {
+      return 1.0 - abs(fbm5(p) * 2.0 - 1.0);
     }
 
     void main() {
@@ -71,13 +89,39 @@ export function createBackground({ scene }) {
       rad = pow(rad, 3.0);
 
       vec2 p = vUv * 3.2 + vec2(uSeed);
-      float n1 = fbm(p + vec2(uTime * 0.02, uTime * 0.012));
-      float n2 = fbm(p * 2.2 + vec2(-uTime * 0.009, uTime * 0.016));
-      float cloud = pow(n1 * 0.7 + n2 * 0.55, 1.5);
 
-      float density = rad * cloud * uOpacity;
-      vec3 col = mix(uColorA, uColorB, cloud * 0.75);
-      gl_FragColor = vec4(col * density * 2.4, density * 1.2);
+      // Domain warping — feed fbm output back in as UV offset to turn blob
+      // clouds into flowing tendril structures (the Inigo Quilez trick).
+      vec2 warp = vec2(
+        fbm3(p + vec2(uTime * 0.03, 1.7)),
+        fbm3(p + vec2(-uTime * 0.025, 4.3))
+      ) * 1.4;
+
+      // Main cloud body — slow, warped, the diffuse backdrop gas.
+      float cloud = fbm5(p + warp + vec2(uTime * 0.02, uTime * 0.012));
+      cloud = pow(max(cloud, 0.0), 1.5);
+
+      // Ridged filaments — thin bright veins through the cloud, offset from
+      // the warp so they don't just trace it.
+      float filaments = ridged(p * 1.8 + warp * 0.8 + vec2(uSeed * 2.0));
+      filaments = pow(filaments, 3.0);
+
+      // Dust lanes — dark sinuous veins that carve out bright regions.
+      // Wider threshold band + stronger subtract gives the nebula more
+      // visible structure instead of a uniform glow.
+      float dust = smoothstep(0.35, 0.7, fbm3(p * 0.8 - warp * 0.4));
+
+      // Combine: bright filaments amplify, dust subtracts hard.
+      float body = cloud + filaments * 0.35;
+      body *= 1.0 - dust * 0.8;
+
+      float density = rad * max(body, 0.0) * uOpacity;
+
+      // Brighter cores lean toward colorB (hotter), diffuse gas toward colorA.
+      float colorMix = clamp(cloud * 0.6 + filaments * 0.8, 0.0, 1.0);
+      vec3 col = mix(uColorA, uColorB, colorMix);
+
+      gl_FragColor = vec4(col * density * 1.5, density * 0.85);
     }
   `;
 
@@ -251,6 +295,176 @@ export function createBackground({ scene }) {
   points.renderOrder = -10;
   root.add(points);
 
+  // =========================================================================
+  // Parallax dust: a closer, faster, smaller starfield in front of the main
+  // one. Adds real depth perception — the eye perceives 3D space only when
+  // layers move at different rates.
+  // =========================================================================
+  const DUST_COUNT = 1200;
+  const DUST_DEPTH_NEAR = 3;
+  const DUST_DEPTH_FAR = 30;
+  const DUST_DEPTH_RANGE = DUST_DEPTH_FAR - DUST_DEPTH_NEAR;
+  const DUST_SPREAD_X = 28;
+  const DUST_SPREAD_Y = 22;
+
+  const dustPositions = new Float32Array(DUST_COUNT * 3);
+  const dustSizes = new Float32Array(DUST_COUNT);
+  const dustColors = new Float32Array(DUST_COUNT * 3);
+  const dustPhases = new Float32Array(DUST_COUNT);
+  const dustBrightness = new Float32Array(DUST_COUNT);
+  const dustPaletteIndex = new Uint8Array(DUST_COUNT);
+
+  for (let i = 0; i < DUST_COUNT; i++) {
+    dustPositions[i * 3] = (Math.random() - 0.5) * 2 * DUST_SPREAD_X;
+    dustPositions[i * 3 + 1] = (Math.random() - 0.5) * 2 * DUST_SPREAD_Y;
+    dustPositions[i * 3 + 2] = Math.random() * DUST_DEPTH_RANGE;
+    dustSizes[i] = 0.35 + Math.random() * 0.9;
+    dustPaletteIndex[i] = Math.floor(Math.random() * 7);
+    dustBrightness[i] = 0.35 + Math.random() * 0.35;
+    dustPhases[i] = Math.random() * Math.PI * 2;
+  }
+
+  const dustGeom = new THREE.BufferGeometry();
+  dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+  dustGeom.setAttribute('size', new THREE.BufferAttribute(dustSizes, 1));
+  dustGeom.setAttribute('starColor', new THREE.BufferAttribute(dustColors, 3));
+  dustGeom.setAttribute('twinklePhase', new THREE.BufferAttribute(dustPhases, 1));
+
+  // Reuse the same shader source — just different uniform values produce the
+  // "closer, faster" parallax feel.
+  const dustMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+      uSpeed: { value: 22.0 },
+      uDepthRange: { value: DUST_DEPTH_RANGE },
+      uDepthNear: { value: DUST_DEPTH_NEAR },
+      uSpread: { value: new THREE.Vector2(DUST_SPREAD_X, DUST_SPREAD_Y) },
+    },
+    vertexShader: starMaterial.vertexShader,
+    fragmentShader: starMaterial.fragmentShader,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+    transparent: true,
+  });
+
+  const dustPoints = new THREE.Points(dustGeom, dustMaterial);
+  dustPoints.frustumCulled = false;
+  dustPoints.renderOrder = -8;
+  root.add(dustPoints);
+
+  // =========================================================================
+  // Shooting stars: pool of bright streaks that occasionally cross the view.
+  // Rendered on the bloom layer so they get a nice halo. Always at most one
+  // or two visible at a time — this is about "events" in the sky, not a
+  // constant rain of meteors.
+  // =========================================================================
+  const STREAK_MAX = 4;
+  const STREAK_LENGTH = 9;
+  const streakPositions = new Float32Array(STREAK_MAX * 6);
+  const streakColors = new Float32Array(STREAK_MAX * 6);
+  const streakGeom = new THREE.BufferGeometry();
+  streakGeom.setAttribute('position', new THREE.BufferAttribute(streakPositions, 3));
+  streakGeom.setAttribute('color', new THREE.BufferAttribute(streakColors, 3));
+  const streakMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const streakLines = new THREE.LineSegments(streakGeom, streakMat);
+  streakLines.frustumCulled = false;
+  streakLines.renderOrder = -5;
+  streakLines.layers.enable(1); // bloom layer — gives them a halo
+  root.add(streakLines);
+
+  const streakState = [];
+  for (let i = 0; i < STREAK_MAX; i++) {
+    streakState.push({ active: false });
+  }
+  let streakSpawnTimer = 2 + Math.random() * 3;
+
+  function spawnStreak(slot) {
+    // Appear somewhere in the mid-distance star volume.
+    const startZ = -18 - Math.random() * 70;
+
+    // Polar spawn in the outer ring — avoids the board's screen-space
+    // footprint (which covers the central portion of the frame). Minimum
+    // radius of 22 keeps streaks clear of the hex even at the deepest z.
+    const startAngle = Math.random() * Math.PI * 2;
+    const startRadius = 22 + Math.random() * 28;
+    slot.x = Math.cos(startAngle) * startRadius;
+    slot.y = Math.sin(startAngle) * startRadius * 0.8;
+    slot.z = startZ;
+
+    // Move tangentially (perpendicular to the radial direction). A straight
+    // line tangent to a circle only ever moves *away* from the center, so
+    // streaks orbit the board instead of crossing it. Bloom halo still
+    // leaks across the scene, but not over the board.
+    const swing = Math.random() > 0.5 ? 1 : -1;
+    const moveAngle = startAngle + (swing * Math.PI) / 2;
+    const speed = 55 + Math.random() * 45;
+    slot.dx = Math.cos(moveAngle) * speed;
+    slot.dy = Math.sin(moveAngle) * speed;
+    slot.dz = 0;
+    const len = Math.hypot(slot.dx, slot.dy, slot.dz) || 1;
+    slot.ux = slot.dx / len;
+    slot.uy = slot.dy / len;
+    slot.uz = slot.dz / len;
+    slot.maxLife = 0.55 + Math.random() * 0.55;
+    slot.life = slot.maxLife;
+    slot.brightness = 1.1 + Math.random() * 0.6;
+    slot.active = true;
+  }
+
+  function updateStreaks(dt) {
+    streakSpawnTimer -= dt;
+    if (streakSpawnTimer <= 0) {
+      const free = streakState.find((s) => !s.active);
+      if (free) spawnStreak(free);
+      streakSpawnTimer = 8 + Math.random() * 22;
+    }
+    for (let i = 0; i < STREAK_MAX; i++) {
+      const s = streakState[i];
+      const o = i * 6;
+      if (!s.active) {
+        for (let j = 0; j < 6; j++) {
+          streakPositions[o + j] = 0;
+          streakColors[o + j] = 0;
+        }
+        continue;
+      }
+      s.x += s.dx * dt;
+      s.y += s.dy * dt;
+      s.z += s.dz * dt;
+      s.life -= dt;
+      if (s.life <= 0) {
+        s.active = false;
+        continue;
+      }
+      const fadeIn = Math.min((s.maxLife - s.life) / 0.08, 1);
+      const fadeOut = Math.min(s.life / 0.25, 1);
+      const fade = Math.max(0, Math.min(fadeIn, fadeOut));
+      const b = s.brightness * fade;
+      streakPositions[o + 0] = s.x;
+      streakPositions[o + 1] = s.y;
+      streakPositions[o + 2] = s.z;
+      streakColors[o + 0] = b;
+      streakColors[o + 1] = b;
+      streakColors[o + 2] = b;
+      streakPositions[o + 3] = s.x - s.ux * STREAK_LENGTH;
+      streakPositions[o + 4] = s.y - s.uy * STREAK_LENGTH;
+      streakPositions[o + 5] = s.z - s.uz * STREAK_LENGTH;
+      streakColors[o + 3] = 0;
+      streakColors[o + 4] = 0;
+      streakColors[o + 5] = 0;
+    }
+    streakGeom.attributes.position.needsUpdate = true;
+    streakGeom.attributes.color.needsUpdate = true;
+  }
+
   function applyTheme(themeId = DEFAULT_THEME_ID) {
     const visuals = getThemeVisuals(themeId);
     for (let i = 0; i < nebulaMeshes.length; i++) {
@@ -268,13 +482,26 @@ export function createBackground({ scene }) {
       colors[i * 3 + 2] = color.b * brightness;
     }
     geom.attributes.starColor.needsUpdate = true;
+
+    for (let i = 0; i < DUST_COUNT; i++) {
+      const color = starPalette[dustPaletteIndex[i] % starPalette.length];
+      const brightness = dustBrightness[i];
+      dustColors[i * 3] = color.r * brightness;
+      dustColors[i * 3 + 1] = color.g * brightness;
+      dustColors[i * 3 + 2] = color.b * brightness;
+    }
+    dustGeom.attributes.starColor.needsUpdate = true;
   }
 
   applyTheme();
 
+  let lastT = null;
   function update(timeMs) {
     const t = timeMs * 0.001;
+    const dt = lastT === null ? 0 : Math.min(t - lastT, 0.1);
+    lastT = t;
     starMaterial.uniforms.uTime.value = t;
+    dustMaterial.uniforms.uTime.value = t;
     for (const n of nebulaMeshes) {
       const phase = ((n.initialPhase + t * NEB_SPEED) % NEB_RANGE + NEB_RANGE) % NEB_RANGE;
       n.mesh.position.z = NEB_Z_FAR + phase;
@@ -283,6 +510,7 @@ export function createBackground({ scene }) {
       n.material.uniforms.uOpacity.value = fadeIn * fadeOut;
       n.material.uniforms.uTime.value = t;
     }
+    updateStreaks(dt);
   }
 
   return { update, setTheme: applyTheme };
