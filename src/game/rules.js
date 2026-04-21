@@ -102,17 +102,20 @@ export async function resolveCompletions(ctx) {
     await Promise.all(affected.map((k) => triangleViews[k].flash?.(260)));
     await Promise.all(affected.map((k) => triangleViews[k].fade?.(0, 200)));
 
-    // Color elimination: any active color now absent from the board (excluding
-    // the affected cells about to be refilled) and not already suppressed gets
-    // a one-shot bonus + temporary refill lockout. Detected here so the refill
-    // below already respects the new suppression.
+    // Color elimination: fires only when *this wave's clears* take a color from
+    // present → absent. We compare colors in the affected (cleared) cells
+    // against colors still on the rest of the board. Just checking "absent
+    // from board" would re-fire on every later wave once suppression decays
+    // (colors stay absent until a refill randomly reintroduces them).
     const affectedSet = new Set(affected);
+    const clearedColors = new Set();
     const remainingColors = new Set();
     for (const k of Object.keys(board)) {
-      if (!affectedSet.has(k)) remainingColors.add(board[k].color);
+      if (affectedSet.has(k)) clearedColors.add(board[k].color);
+      else remainingColors.add(board[k].color);
     }
     const eliminated = activeColors.filter(
-      (c) => !remainingColors.has(c) && !isColorSuppressed(c),
+      (c) => clearedColors.has(c) && !remainingColors.has(c),
     );
     if (eliminated.length > 0) {
       for (const c of eliminated) suppressColor(c);

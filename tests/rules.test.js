@@ -147,26 +147,36 @@ describe('color elimination', () => {
     expect(isColorSuppressed('X')).toBe(true);
   });
 
-  it('does not re-fire while the color is already suppressed', async () => {
+  it('fires only once per elimination — a follow-up wave on different cells does not refire', async () => {
+    // Board where color X exists ONLY in ring(6,3). A different vertex (k=4,j=2)
+    // is monochrome 'M' — cleared by the second wave, but contains no X.
     const palette = ['A', 'B', 'C'];
     const b = makeBoard((c, r) => palette[(c + r) % 3]);
     for (const [c, r] of ring(6, 3)) b[key(c, r)].color = 'X';
-    const fakeViews = makeFakeViews(b);
     const events = [];
     let unique = 0;
-    gameState.activeColors = ['X', 'A', 'B', 'C'];
-    // Pre-suppress X.
-    gameState.suppressedColors = { X: 3 };
+    gameState.activeColors = ['X', 'A', 'B', 'C', 'M'];
     const ctx = {
       board: b,
-      triangleViews: fakeViews,
+      triangleViews: makeFakeViews(b),
       activeColors: gameState.activeColors,
-      pickColor: () => `U${unique++}`,
+      pickColor: () => `U${unique++}`, // never refill X back
       onCascadeWave: () => {},
       hooks: { onColorEliminated: (info) => events.push(info) },
     };
     await resolveCompletions(ctx);
-    expect(events).toHaveLength(0);
+    expect(events).toHaveLength(1);
+    expect(events[0].colors).toEqual(['X']);
+
+    // Stage a new wave at a different vertex that doesn't touch any X cells —
+    // X is still absent from the board, but it wasn't cleared by this wave, so
+    // no re-fire.
+    for (const [c, r] of ring(4, 2)) b[key(c, r)].color = 'M';
+    await resolveCompletions({
+      ...ctx,
+      triangleViews: makeFakeViews(b),
+    });
+    expect(events).toHaveLength(1);
   });
 });
 
