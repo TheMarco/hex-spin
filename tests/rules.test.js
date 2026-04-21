@@ -1,12 +1,15 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { findCompletedHexes, resolveCompletions, MAX_CASCADE } from '../src/game/rules.js';
 import { ROWS, COLS, ring, key, isInsideHex } from '../src/utils/math.js';
+import { gameState, resetGameState, isColorSuppressed } from '../src/game/state.js';
 
 beforeAll(() => {
   if (typeof globalThis.requestAnimationFrame === 'undefined') {
     globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
   }
 });
+
+beforeEach(() => resetGameState());
 
 // Hex-shaped test board: same filter as production createBoard but
 // deterministic coloring for assertions.
@@ -115,6 +118,55 @@ describe('resolveCompletions', () => {
     } finally {
       console.warn = origWarn;
     }
+  });
+});
+
+describe('color elimination', () => {
+  it('fires onColorEliminated and suppresses the color when its last cells clear', async () => {
+    // Build a board where color X exists ONLY in ring(6,3). Clearing that hex
+    // strips the last X off the board → eliminated.
+    const palette = ['A', 'B', 'C'];
+    const b = makeBoard((c, r) => palette[(c + r) % 3]);
+    for (const [c, r] of ring(6, 3)) b[key(c, r)].color = 'X';
+    const fakeViews = makeFakeViews(b);
+    const events = [];
+    let unique = 0;
+    const ctx = {
+      board: b,
+      triangleViews: fakeViews,
+      activeColors: ['X', 'A', 'B', 'C'],
+      pickColor: () => `U${unique++}`, // never refill X back
+      onCascadeWave: () => {},
+      hooks: { onColorEliminated: (info) => events.push(info) },
+    };
+    // Stage gameState so suppression detection is well-defined.
+    gameState.activeColors = ['X', 'A', 'B', 'C'];
+    await resolveCompletions(ctx);
+    expect(events).toHaveLength(1);
+    expect(events[0].colors).toEqual(['X']);
+    expect(isColorSuppressed('X')).toBe(true);
+  });
+
+  it('does not re-fire while the color is already suppressed', async () => {
+    const palette = ['A', 'B', 'C'];
+    const b = makeBoard((c, r) => palette[(c + r) % 3]);
+    for (const [c, r] of ring(6, 3)) b[key(c, r)].color = 'X';
+    const fakeViews = makeFakeViews(b);
+    const events = [];
+    let unique = 0;
+    gameState.activeColors = ['X', 'A', 'B', 'C'];
+    // Pre-suppress X.
+    gameState.suppressedColors = { X: 3 };
+    const ctx = {
+      board: b,
+      triangleViews: fakeViews,
+      activeColors: gameState.activeColors,
+      pickColor: () => `U${unique++}`,
+      onCascadeWave: () => {},
+      hooks: { onColorEliminated: (info) => events.push(info) },
+    };
+    await resolveCompletions(ctx);
+    expect(events).toHaveLength(0);
   });
 });
 

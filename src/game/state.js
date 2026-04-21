@@ -23,6 +23,13 @@ export const FRESH_BONUS_MAX = 1000;
 export const FRESH_BONUS_MIN = 100;
 export const FRESH_BONUS_STEP = 100;
 
+// Color elimination — clearing the last triangle of a color awards a flat
+// bonus (scaled by phase) and locks that color out of refills for a few spins,
+// giving the player a temporary thinned-palette window to chain follow-ups.
+export const COLOR_ELIM_BONUS_BASE = 5000;
+export const COLOR_ELIM_HEAT_BONUS = 0.18;
+export const COLOR_ELIM_SUPPRESSION_SPINS = 4;
+
 export function drainMultiplierForPhase(phase) {
   return 1 + (phase - 1) * HEAT_PHASE_DRAIN_SCALE;
 }
@@ -49,6 +56,7 @@ export const gameState = {
   status: 'idle',
   activeColors: activePalette(1),
   heat: HEAT_START,
+  suppressedColors: {},
 };
 
 export function resetGameState() {
@@ -63,6 +71,7 @@ export function resetGameState() {
   gameState.status = 'idle';
   gameState.activeColors = activePalette(1);
   gameState.heat = HEAT_START;
+  gameState.suppressedColors = {};
 }
 
 export function nextPhaseFromHexCount(currentPhase, hexCount) {
@@ -115,4 +124,34 @@ export function addHeat(amount) {
 
 export function isHeatEmpty() {
   return gameState.heat <= 0.0001;
+}
+
+// Color suppression: refills skip these colors for the recorded number of
+// spins so the eliminated color stays off the board long enough for the
+// player to set up a follow-up combo on a thinned palette.
+export function suppressColor(color, spins = COLOR_ELIM_SUPPRESSION_SPINS) {
+  if (!color) return;
+  gameState.suppressedColors[color] = spins;
+}
+
+export function isColorSuppressed(color) {
+  return (gameState.suppressedColors[color] ?? 0) > 0;
+}
+
+// Decrement every counter once. Removes entries that hit zero. Called once
+// per successful spin so suppression is measured in player taps.
+export function tickColorSuppression() {
+  for (const color of Object.keys(gameState.suppressedColors)) {
+    const next = gameState.suppressedColors[color] - 1;
+    if (next <= 0) delete gameState.suppressedColors[color];
+    else gameState.suppressedColors[color] = next;
+  }
+}
+
+// Picker pool for refills: activeColors minus suppressed. Falls back to the
+// full palette if suppression would empty the pool (can happen if multiple
+// colors are eliminated at low phase counts).
+export function getPickableColors() {
+  const pool = gameState.activeColors.filter((c) => !isColorSuppressed(c));
+  return pool.length > 0 ? pool : gameState.activeColors;
 }

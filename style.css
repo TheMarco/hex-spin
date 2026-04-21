@@ -292,6 +292,42 @@ body {
   }
 }
 
+.elim-banner {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  text-align: center;
+  letter-spacing: 0.18em;
+  pointer-events: none;
+  text-shadow: 0 0 12px currentColor, 0 0 28px currentColor, 0 0 48px currentColor;
+  animation: elim-pop 1.5s cubic-bezier(0.18, 0.9, 0.3, 1.1) forwards;
+}
+.elim-banner-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.elim-banner-points {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+@keyframes elim-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.55); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.18); }
+  35% { transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -80%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -110%) scale(0.95); }
+}
+
+@media (max-width: 720px) {
+  .elim-banner-title { font-size: 18px; }
+  .elim-banner-points { font-size: 30px; }
+}
+
 
 @media (max-width: 720px) {
   .hud-row {

@@ -234,6 +234,36 @@ export function createHowToPlay({ container, onBack, onStart }) {
       <section class="howto-section">
         <div class="howto-card-head">
           <span class="howto-num">07</span>
+          <h2>COLOR ELIMINATION</h2>
+        </div>
+        <p class="howto-body">
+          Wipe the <strong>last triangle</strong> of any color off the board and you score a
+          fat <strong>+5,000</strong> bonus (×2 each phase: 5K / 10K / 20K / 40K), a hefty
+          shot of heat, and that color is <strong>locked out of refills</strong> for the next
+          few spins. Use the thinned palette window to set up a follow-up combo on the
+          colors that are left.
+        </p>
+        <div class="howto-demo">
+          <div class="howto-step">
+            ${hexSvg([Y, M, C, M, P, M], { markerColor: '#fff' })}
+            <div class="howto-step-label">Last Y on the board</div>
+          </div>
+          <div class="howto-arrow howto-arrow-pop">✦</div>
+          <div class="howto-step">
+            ${hexSvg([M, M, M, M, M, M], { markerColor: M, markerOuter: M })}
+            <div class="howto-step-label">Clear it &rarr; <strong style="color:${Y}">COLOR CLEARED!</strong></div>
+          </div>
+          <div class="howto-arrow">▶</div>
+          <div class="howto-step">
+            ${hexSvg([C, M, P, C, P, M], { markerColor: '#fff' })}
+            <div class="howto-step-label">Refills skip Y for a few spins</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="howto-section">
+        <div class="howto-card-head">
+          <span class="howto-num">08</span>
           <h2>PRO TIPS</h2>
         </div>
         <ul class="howto-tips">
@@ -261,12 +291,16 @@ export function createHowToPlay({ container, onBack, onStart }) {
             <span class="howto-tip-mark" style="--mc:${G}">↻</span>
             <span><strong>Cascades are king.</strong> A 4-deep chain pays 8× per hex. Setups that load the board for chain refills outscore single clears every time.</span>
           </li>
+          <li>
+            <span class="howto-tip-mark" style="--mc:${Y}">✦</span>
+            <span><strong>Wipe a color.</strong> Clearing the last triangle of any color triggers a huge <em>COLOR CLEARED</em> bonus and locks that color out of refills for a few spins &mdash; perfect setup for a back-to-back combo on the thinned palette.</span>
+          </li>
         </ul>
       </section>
 
       <section class="howto-section">
         <div class="howto-card-head">
-          <span class="howto-num">08</span>
+          <span class="howto-num">09</span>
           <h2>INSTALL AS APP</h2>
         </div>
         <p class="howto-body">

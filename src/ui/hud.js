@@ -80,6 +80,18 @@ export function createHUD({ container, camera }) {
     setTimeout(() => el.remove(), 1100);
   }
 
+  function spawnElimBanner(color, points) {
+    const el = document.createElement('div');
+    el.className = 'elim-banner';
+    el.style.color = color;
+    el.innerHTML = `
+      <div class="elim-banner-title">COLOR CLEARED</div>
+      <div class="elim-banner-points">+${points.toLocaleString()}</div>
+    `;
+    floatLayer.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+
   function updateHeat(heat) {
     const heatColors = getThemeHeatColors(getThemeIdForPhase(gameState.phase));
     const clamped = Math.max(0, Math.min(1, heat));
@@ -100,5 +112,5 @@ export function createHUD({ container, camera }) {
   refresh();
   updateHeat(0.7);
 
-  return { refresh, spawnFloatingScore, updateHeat };
+  return { refresh, spawnFloatingScore, spawnElimBanner, updateHeat };
 }

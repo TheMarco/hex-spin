@@ -31,6 +31,8 @@ import {
   addHeat,
   isHeatEmpty,
   HEAT_PHASE_BONUS,
+  COLOR_ELIM_BONUS_BASE,
+  COLOR_ELIM_HEAT_BONUS,
   withBusy,
 } from './game/state.js';
 import { vPos } from './utils/math.js';
@@ -41,6 +43,7 @@ import {
   playImplodeWhoosh,
   playPhaseTransitionSfx,
   playExtraBonus,
+  playColorEliminated,
   playGameOver,
   setMusicTheme,
   setMuted,
@@ -216,6 +219,19 @@ const gameHooks = {
     const newColor = getThemeNewColor(getThemeIdForPhase(gameState.phase))[gameState.phase];
     const bonus = Boolean(newColor && hex.color === newColor);
     playHexClear(cascade + index, { bonus });
+  },
+  onColorEliminated: ({ colors, phase }) => {
+    const bonus = COLOR_ELIM_BONUS_BASE * Math.pow(2, phase - 1);
+    colors.forEach((color, i) => {
+      gameState.score += bonus;
+      addHeat(COLOR_ELIM_HEAT_BONUS);
+      hud.spawnElimBanner(color, bonus);
+      playColorEliminated({ extra: i });
+    });
+    kickBloom(0.6, 360);
+    shake(0.018, 260);
+    fovPunch(1.4, 280);
+    hud.refresh();
   },
   onPhaseChange: async (newPhase) => {
     applyThemePresentation(newPhase);
@@ -435,7 +451,7 @@ showTitleScreen();
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
 

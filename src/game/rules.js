@@ -1,5 +1,12 @@
 import { ROWS, COLS, ring, isRealVertex, key, vPos } from '../utils/math.js';
-import { gameState, nextPhaseFromHexCount, advancePhase, freshnessMultiplier } from './state.js';
+import {
+  gameState,
+  nextPhaseFromHexCount,
+  advancePhase,
+  freshnessMultiplier,
+  isColorSuppressed,
+  suppressColor,
+} from './state.js';
 
 export const MAX_CASCADE = 50;
 // Gap between per-hex pops in a multi-hex wave. Each hex fires audio + VFX in
@@ -39,7 +46,11 @@ export function findCompletedHexes(board) {
 }
 
 function defaultPicker(activeColors) {
-  return () => activeColors[Math.floor(Math.random() * activeColors.length)];
+  return () => {
+    const pool = activeColors.filter((c) => !isColorSuppressed(c));
+    const eff = pool.length > 0 ? pool : activeColors;
+    return eff[Math.floor(Math.random() * eff.length)];
+  };
 }
 
 export async function resolveCompletions(ctx) {
@@ -90,6 +101,23 @@ export async function resolveCompletions(ctx) {
 
     await Promise.all(affected.map((k) => triangleViews[k].flash?.(260)));
     await Promise.all(affected.map((k) => triangleViews[k].fade?.(0, 200)));
+
+    // Color elimination: any active color now absent from the board (excluding
+    // the affected cells about to be refilled) and not already suppressed gets
+    // a one-shot bonus + temporary refill lockout. Detected here so the refill
+    // below already respects the new suppression.
+    const affectedSet = new Set(affected);
+    const remainingColors = new Set();
+    for (const k of Object.keys(board)) {
+      if (!affectedSet.has(k)) remainingColors.add(board[k].color);
+    }
+    const eliminated = activeColors.filter(
+      (c) => !remainingColors.has(c) && !isColorSuppressed(c),
+    );
+    if (eliminated.length > 0) {
+      for (const c of eliminated) suppressColor(c);
+      hooks?.onColorEliminated?.({ colors: eliminated, cascade, phase: gameState.phase });
+    }
 
     // Refill — only visible triangles get new colors. Phantom slots are sacred.
     for (const k of affected) {

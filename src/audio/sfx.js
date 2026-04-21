@@ -12,6 +12,7 @@ import turnwheelUrl from './s-turnwheel.mp3?url';
 import hexagonUrl from './s-hexagon.mp3?url';
 import hexagonNewUrl from './s-hexagonnew.mp3?url';
 import extrabonusUrl from './s-extrabonus.mp3?url';
+import colorEliminatedUrl from './s-coloreliminated.mp3?url';
 import levelupUrl from './s-levelup.mp3?url';
 import gameoverUrl from './s-gameover.mp3?url';
 
@@ -20,6 +21,7 @@ const SFX_URLS = {
   hexagon: hexagonUrl,
   hexagonnew: hexagonNewUrl,
   extrabonus: extrabonusUrl,
+  coloreliminated: colorEliminatedUrl,
   levelup: levelupUrl,
   gameover: gameoverUrl,
 };
@@ -177,6 +179,14 @@ export function playImplodeWhoosh() {}
 
 export function playPhaseTransitionSfx() {
   playBuffer('levelup');
+}
+
+// Color elimination — a single special-event sting. Pitched up slightly per
+// extra color cleared in the same wave so back-to-back eliminations stack
+// audibly without smearing into noise.
+export function playColorEliminated({ extra = 0 } = {}) {
+  const rate = Math.pow(SEMITONE, Math.min(extra, 4) * 2);
+  playBuffer('coloreliminated', { rate, volume: 0.95 });
 }
 
 export function playGameOver() {

@@ -62,6 +62,7 @@ src/
     s-turnwheel.mp3
     s-hexagon.mp3
     s-hexagonnew.mp3
+    s-coloreliminated.mp3
     s-levelup.mp3
     s-gameover.mp3
   ui/
@@ -138,6 +139,14 @@ plans/              Scratch notes, not imported into runtime code
   8. Fade them back in over `260ms`.
 - `MAX_CASCADE = 50` guards against runaway refill loops.
 - Phase advancement is checked only after the entire cascade finishes.
+
+### Color elimination
+
+- After a wave's triangles fade out and **before** they refill, `resolveCompletions` checks which `activeColors` are absent from the non-affected cells and not already suppressed.
+- Each newly-eliminated color is added to `gameState.suppressedColors` (count = `COLOR_ELIM_SUPPRESSION_SPINS`, default `4`) and the `hooks.onColorEliminated({ colors, cascade, phase })` hook is called.
+- `tickColorSuppression()` runs once per successful spin (in `spin.js` next to `gameState.spins++`); when a counter hits zero the entry is removed.
+- The default refill picker filters `activeColors` by `isColorSuppressed`. If suppression would empty the pool, it falls back to the full `activeColors` so refills can never stall (this matters most in phase 1 where only 3 colors are active).
+- Per eliminated color the main hook awards a flat bonus of `COLOR_ELIM_BONUS_BASE × 2^(phase-1)` (5K / 10K / 20K / 40K) plus `+COLOR_ELIM_HEAT_BONUS` heat, fires the `s-coloreliminated.mp3` sting (pitched up per extra color in the same wave), shows a centered `COLOR CLEARED` banner via `hud.spawnElimBanner`, and kicks bloom + camera shake + FOV punch.
 
 ### Scoring
 
@@ -250,7 +259,7 @@ Heat is the run timer in `src/game/state.js`.
 
 Audio is currently sample-based, not procedural.
 
-- `src/audio/sfx.js` imports ten assets:
+- `src/audio/sfx.js` imports eleven assets:
   - `s-music1.mp3`
   - `s-music2.mp3`
   - `s-music3.mp3`
@@ -259,6 +268,7 @@ Audio is currently sample-based, not procedural.
   - `s-hexagon.mp3`
   - `s-hexagonnew.mp3`
   - `s-extrabonus.mp3`
+  - `s-coloreliminated.mp3`
   - `s-levelup.mp3`
   - `s-gameover.mp3`
 - `initAudio()` runs on the first user gesture:
@@ -277,6 +287,7 @@ Audio is currently sample-based, not procedural.
   - `playSpin()` — plays the turnwheel sample
   - `playHexClear(cascade, { bonus })` — pitch-shifts the clear sample by cascade depth and uses an alternate sample for bonus-color clears
   - `playExtraBonus({ cascade, freshMult })` — layers `s-extrabonus.mp3` over cascade waves 2+ (and on the hottest fresh-hit wave-1 clears) with pitch climbing in 3-semitone steps; deep chains also trigger a delayed perfect-fifth echo
+  - `playColorEliminated({ extra })` — fires `s-coloreliminated.mp3` for the color-elimination event; pitched up by `extra` whole-tones (capped at 4) so multiple colors cleared in the same wave stack audibly
   - `playPhaseTransitionSfx()` — plays the level-up sample
   - `playGameOver()` — plays the game-over sample
 - Current no-ops:
@@ -374,6 +385,7 @@ Implications:
 - **`vertexDots.update()` is currently a no-op**; the markers are static
 - **Audio is sample-based baseline behavior**. Do not describe it as procedural unless the implementation changes
 - **Background music is now four shipped assets** relative to the rest of the game; be deliberate before adding more media weight
+- **Color elimination only fires once per wipe.** A color must transition from present → absent on a wave, and is skipped if `gameState.suppressedColors[color]` is still ticking down from a previous elimination
 
 ---
 

@@ -5,6 +5,11 @@ import {
   withBusy,
   nextPhaseFromHexCount,
   advancePhase,
+  suppressColor,
+  isColorSuppressed,
+  tickColorSuppression,
+  getPickableColors,
+  COLOR_ELIM_SUPPRESSION_SPINS,
 } from '../src/game/state.js';
 import { getThemeIdForPhase, getThemePhasePalettes } from '../src/utils/colors.js';
 
@@ -79,6 +84,48 @@ describe('advancePhase', () => {
     expect(gameState.activeColors).toHaveLength(5);
     advancePhase(4);
     expect(gameState.activeColors).toHaveLength(6);
+  });
+});
+
+describe('color suppression', () => {
+  it('suppressColor + isColorSuppressed flag the color', () => {
+    const c = gameState.activeColors[0];
+    expect(isColorSuppressed(c)).toBe(false);
+    suppressColor(c);
+    expect(isColorSuppressed(c)).toBe(true);
+  });
+
+  it('decays one spin at a time and clears at zero', () => {
+    const c = gameState.activeColors[0];
+    suppressColor(c, 2);
+    tickColorSuppression();
+    expect(isColorSuppressed(c)).toBe(true);
+    tickColorSuppression();
+    expect(isColorSuppressed(c)).toBe(false);
+  });
+
+  it('default suppression lasts COLOR_ELIM_SUPPRESSION_SPINS spins', () => {
+    const c = gameState.activeColors[0];
+    suppressColor(c);
+    for (let i = 0; i < COLOR_ELIM_SUPPRESSION_SPINS - 1; i++) tickColorSuppression();
+    expect(isColorSuppressed(c)).toBe(true);
+    tickColorSuppression();
+    expect(isColorSuppressed(c)).toBe(false);
+  });
+
+  it('getPickableColors filters suppressed and falls back when empty', () => {
+    const [a, b, ...rest] = gameState.activeColors;
+    suppressColor(a);
+    expect(getPickableColors()).toEqual([b, ...rest]);
+    // Suppress every color → fallback to the full palette so refills can't stall.
+    for (const c of gameState.activeColors) suppressColor(c);
+    expect(getPickableColors()).toEqual(gameState.activeColors);
+  });
+
+  it('resetGameState clears suppression', () => {
+    suppressColor(gameState.activeColors[0]);
+    resetGameState();
+    expect(gameState.suppressedColors).toEqual({});
   });
 });
 

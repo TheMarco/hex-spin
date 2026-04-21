@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ring, vPos, key } from '../utils/math.js';
 import { isValidVertex } from './board.js';
 import { tween } from '../utils/animate.js';
-import { gameState, withBusy } from './state.js';
+import { gameState, withBusy, tickColorSuppression } from './state.js';
 import { resolveCompletions } from './rules.js';
 import { buildSpinSlots, planClockwiseSpin } from './spin-model.js';
 import { Triangle } from '../render/triangles.js';
@@ -151,6 +151,7 @@ export async function spin({
 
     gameState.spins++;
     gameState.spinsSinceLastClear++;
+    tickColorSuppression();
 
     if (!deferResolve) {
       await resolveCompletions({
