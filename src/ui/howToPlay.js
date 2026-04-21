@@ -41,6 +41,9 @@ export function createHowToPlay({ container, onBack, onStart }) {
   overlay.className = 'howto-screen';
   overlay.innerHTML = `
     <div class="howto-scroll">
+      <div class="howto-top-actions">
+        <button class="howto-back-top" data-action="back">◀ BACK</button>
+      </div>
       <header class="howto-header">
         <div class="howto-kicker">[ FIELD MANUAL // v1.0 ]</div>
         <h1 class="howto-title">HOW TO PLAY</h1>
@@ -328,7 +331,9 @@ export function createHowToPlay({ container, onBack, onStart }) {
     handler?.();
   }
 
-  overlay.querySelector('[data-action="back"]').addEventListener('click', () => close(onBack));
+  overlay.querySelectorAll('[data-action="back"]').forEach((el) =>
+    el.addEventListener('click', () => close(onBack)),
+  );
   overlay.querySelector('[data-action="start"]').addEventListener('click', () => close(onStart));
 
   return { close: () => close() };

@@ -1028,6 +1028,43 @@ body {
   border-radius: 4px;
 }
 
+.howto-top-actions,
+.about-top-actions {
+  max-width: 980px;
+  margin: 0 auto 18px;
+  display: flex;
+  justify-content: flex-start;
+}
+.howto-back-top,
+.about-back-top {
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  cursor: pointer;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 10px color-mix(in srgb, var(--ui-accent) 65%, transparent);
+  box-shadow:
+    inset 0 0 8px color-mix(in srgb, var(--ui-accent) 14%, transparent),
+    0 0 6px color-mix(in srgb, var(--ui-accent) 30%, transparent);
+  transition: background 200ms ease, box-shadow 200ms ease, transform 120ms ease;
+}
+.howto-back-top:hover,
+.about-back-top:hover {
+  background: color-mix(in srgb, var(--ui-accent) 16%, rgba(0, 0, 0, 0.55));
+  box-shadow:
+    inset 0 0 12px color-mix(in srgb, var(--ui-accent) 24%, transparent),
+    0 0 16px color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+.howto-back-top:active,
+.about-back-top:active {
+  transform: translateY(1px);
+}
+
 .howto-header {
   text-align: center;
   margin: 6px auto 32px;

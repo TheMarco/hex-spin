@@ -3,6 +3,9 @@ export function createAbout({ container, onBack }) {
   overlay.className = 'about-screen';
   overlay.innerHTML = `
     <div class="about-scroll">
+      <div class="about-top-actions">
+        <button class="about-back-top" data-action="back">◀ BACK</button>
+      </div>
       <header class="about-header">
         <div class="about-kicker">[ TRANSMISSION // FROM THE DEV ]</div>
         <h1 class="about-title">ABOUT</h1>
@@ -136,7 +139,9 @@ export function createAbout({ container, onBack }) {
     handler?.();
   }
 
-  overlay.querySelector('[data-action="back"]').addEventListener('click', () => close(onBack));
+  overlay.querySelectorAll('[data-action="back"]').forEach((el) =>
+    el.addEventListener('click', () => close(onBack)),
+  );
 
   return { close: () => close() };
 }
