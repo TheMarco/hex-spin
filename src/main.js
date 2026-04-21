@@ -223,6 +223,7 @@ const gameHooks = {
     const bonus = COLOR_ELIM_BONUS_BASE * Math.pow(2, phase - 1);
     colors.forEach((color, i) => {
       gameState.score += bonus;
+      gameState.colorEliminations++;
       hud.spawnElimBanner(color, bonus);
       playColorEliminated({ extra: i });
     });

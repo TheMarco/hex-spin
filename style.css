@@ -722,8 +722,8 @@ body {
 .gameover-stats-grid {
   margin-top: 32px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
   border-top: 1px solid color-mix(in srgb, var(--ui-accent) 35%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--ui-accent) 35%, transparent);
   padding: 16px 0;
@@ -734,18 +734,18 @@ body {
   gap: 6px;
 }
 .gameover-stat-label {
-  font-size: 13px;
-  letter-spacing: 0.26em;
+  font-size: clamp(10px, 2.4vw, 13px);
+  letter-spacing: 0.18em;
   color: #ffffff;
   opacity: 0.7;
   text-transform: uppercase;
   font-weight: 700;
 }
 .gameover-stat-value {
-  font-size: 38px;
+  font-size: clamp(24px, 6vw, 32px);
   font-weight: 900;
   color: #ffffff;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-shadow:
     0 0 3px #ffffff,
     0 0 14px color-mix(in srgb, var(--ui-accent-alt) 80%, transparent),

@@ -54,6 +54,10 @@ export function createOverlay({ container, onPlayAgain }) {
             <div class="gameover-stat-label">Longest</div>
             <div class="gameover-stat-value">×${gameState.longestCascade}</div>
           </div>
+          <div class="gameover-stat">
+            <div class="gameover-stat-label">Wipes</div>
+            <div class="gameover-stat-value">${gameState.colorEliminations}</div>
+          </div>
         </div>
         <button class="play-again">PLAY AGAIN</button>
       </div>

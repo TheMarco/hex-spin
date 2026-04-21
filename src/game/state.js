@@ -57,6 +57,7 @@ export const gameState = {
   activeColors: activePalette(1),
   heat: HEAT_START,
   suppressedColors: {},
+  colorEliminations: 0,
 };
 
 export function resetGameState() {
@@ -72,6 +73,7 @@ export function resetGameState() {
   gameState.activeColors = activePalette(1);
   gameState.heat = HEAT_START;
   gameState.suppressedColors = {};
+  gameState.colorEliminations = 0;
 }
 
 export function nextPhaseFromHexCount(currentPhase, hexCount) {
