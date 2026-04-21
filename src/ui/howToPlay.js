@@ -141,7 +141,7 @@ export function createHowToPlay({ container, onBack, onStart }) {
             <div class="howto-heatbar-fill"></div>
           </div>
           <div class="howto-heatbar-legend">
-            <span><span class="howto-dot" style="background:${C}"></span> Drain &minus;0.7%/sec (faster each phase)</span>
+            <span><span class="howto-dot" style="background:${C}"></span> Drain &minus;0.8%/sec (faster each phase)</span>
             <span><span class="howto-dot" style="background:${Y}"></span> Each clear refills (1 hex = +18%, 2 hexes = +72%, 3 = +162%)</span>
             <span><span class="howto-dot" style="background:${O}"></span> Phase advance bonus +40%</span>
           </div>

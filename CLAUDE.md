@@ -173,7 +173,7 @@ Heat is the run timer in `src/game/state.js`.
 - `drainHeat(deltaSeconds)` drains whenever `gameState.status === 'idle'`
 - Current implementation detail: `status` is not switched to a dedicated `spinning` or `resolving` state, so heat also drains during active spin/cascade sequences while `busy === true`
 - Drain rate:
-  - `HEAT_DRAIN_PER_SEC = 0.007`
+  - `HEAT_DRAIN_PER_SEC = 0.00805`
   - multiplied by `drainMultiplierForPhase(phase)`
 - Heat gain:
   - per cascade wave: `HEAT_HEX_BASE × n²`

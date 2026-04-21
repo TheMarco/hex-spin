@@ -706,11 +706,12 @@ body {
 
 .gameover-score {
   margin-top: 6px;
-  font-size: clamp(64px, 12vw, 104px);
+  font-size: clamp(48px, 9vw, 78px);
   font-weight: 900;
   line-height: 1;
   color: var(--ui-accent);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   text-shadow:
     0 0 4px #ffffff,
     0 0 14px color-mix(in srgb, var(--ui-accent) 95%, transparent),
