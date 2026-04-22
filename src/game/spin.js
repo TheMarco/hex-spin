@@ -20,6 +20,7 @@ export async function spin({
   hooks,
   applyColorShift = true,
   deferResolve = false,
+  pickColor,
 }) {
   if (gameState.status === 'game_over') return false;
   if (gameState.status === 'phase_transition') return false;
@@ -160,6 +161,7 @@ export async function spin({
         activeColors: gameState.activeColors,
         effects,
         hooks,
+        pickColor,
         onCascadeWave: (info) => {
           gameState.currentCascade = info.cascade;
           gameState.longestCascade = Math.max(gameState.longestCascade, info.cascade);

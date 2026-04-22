@@ -148,9 +148,12 @@ export async function resolveCompletions(ctx) {
     }
 
     // Refill — only visible triangles get new colors. Phantom slots are sacred.
+    // pickColor receives the cell so custom pickers (e.g. the demo) can pick
+    // deterministically based on triangle parity.
     for (const k of affected) {
-      const c = pickColor();
-      board[k].color = c;
+      const cell = board[k];
+      const c = pickColor(cell);
+      cell.color = c;
       triangleViews[k].setColor(c);
     }
 

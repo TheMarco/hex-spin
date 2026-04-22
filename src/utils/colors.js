@@ -148,12 +148,16 @@ function buildThemeVisuals(ordered) {
   const danger = accentAlt;
   const flash = tint(secondary, 0.7);
 
+  // With only 3 palette entries (phase 1), highlight/support/deep fall back to
+  // duplicates of secondary/accent/accentAlt. Pulling mixes from secondary and
+  // accent (rather than deep) keeps the cool side of the palette visible even
+  // when deep === accentAlt.
   const nebulaColors = [
     { colorA: unitRgb(mixHex(accentAlt, accent, 0.3)), colorB: unitRgb(shade(accentAlt, 0.8)) },
-    { colorA: unitRgb(mixHex(accent, deep, 0.4)), colorB: unitRgb(shade(deep, 0.78)) },
-    { colorA: unitRgb(mixHex(highlight, secondary, 0.35)), colorB: unitRgb(shade(highlight, 0.82)) },
-    { colorA: unitRgb(mixHex(deep, accentAlt, 0.4)), colorB: unitRgb(shade(deep, 0.8)) },
-    { colorA: unitRgb(mixHex(support, accent, 0.4)), colorB: unitRgb(shade(mixHex(support, deep, 0.5), 0.8)) },
+    { colorA: unitRgb(mixHex(accent, secondary, 0.35)), colorB: unitRgb(shade(accent, 0.7)) },
+    { colorA: unitRgb(mixHex(secondary, highlight, 0.3)), colorB: unitRgb(shade(secondary, 0.78)) },
+    { colorA: unitRgb(mixHex(accent, accentAlt, 0.35)), colorB: unitRgb(shade(accent, 0.75)) },
+    { colorA: unitRgb(mixHex(support, accent, 0.4)), colorB: unitRgb(shade(mixHex(accent, secondary, 0.4), 0.75)) },
   ];
 
   const starPalette = [

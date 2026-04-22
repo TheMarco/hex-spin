@@ -61,6 +61,7 @@ export const gameState = {
   heat: HEAT_START,
   suppressedColors: {},
   colorEliminations: 0,
+  demoActive: false,
 };
 
 export function resetGameState() {
@@ -77,6 +78,7 @@ export function resetGameState() {
   gameState.heat = HEAT_START;
   gameState.suppressedColors = {};
   gameState.colorEliminations = 0;
+  gameState.demoActive = false;
 }
 
 export function nextPhaseFromHexCount(currentPhase, hexCount) {
@@ -113,6 +115,7 @@ export async function withBusy(work) {
 // Heat: drained only while the run is active (not during phase transitions or game over).
 export function drainHeat(deltaSeconds) {
   if (gameState.status !== 'idle') return;
+  if (gameState.demoActive) return;
   const rate = HEAT_DRAIN_PER_SEC * drainMultiplierForPhase(gameState.phase);
   gameState.heat = Math.max(0, gameState.heat - rate * deltaSeconds);
 }

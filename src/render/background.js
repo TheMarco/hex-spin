@@ -131,7 +131,7 @@ export function createBackground({ scene }) {
   const NEB_Z_NEAR = -28;
   const NEB_RANGE = NEB_Z_NEAR - NEB_Z_FAR;
   const NEB_FADE_BAND = 14;
-  const NEB_SPEED = 1.5; // units/sec — 1/6 of star speed
+  const NEB_SPEED = 6.0; // units/sec — 4x original drift, still under star speed
 
   const nebulaMeshes = [];
 

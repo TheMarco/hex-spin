@@ -110,3 +110,20 @@ export function realRingCount(k, j, board) {
   for (const [c, r] of ts) if (board[key(c, r)]) n++;
   return n;
 }
+
+// Deterministic board builder for the demo. `fillerFn(col, row)` supplies a
+// color for every cell; `overrides` is a { "col,row": color } map applied on
+// top. No re-roll loop — the caller is responsible for keeping the result free
+// of pre-complete hexes.
+export function createBoardFromPreset(overrides, fillerFn) {
+  const board = {};
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      if (!isInsideHex(col, row)) continue;
+      const k = key(col, row);
+      const color = overrides[k] ?? fillerFn(col, row);
+      board[k] = { col, row, color, isUp: (col + row) % 2 === 0 };
+    }
+  }
+  return board;
+}

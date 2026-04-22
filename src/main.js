@@ -17,10 +17,12 @@ import { createVertexDots } from './render/vertexDots.js';
 import { createParticleSystem } from './render/particles.js';
 import { createBackground } from './render/background.js';
 import { createSeamCurrent } from './render/seam-current.js';
+import { createHexHighlight } from './render/hexHighlight.js';
 import { createHUD } from './ui/hud.js';
 import { createOverlay } from './ui/overlay.js';
 import { createHowToPlay } from './ui/howToPlay.js';
 import { createAbout } from './ui/about.js';
+import { createDemo } from './ui/demo.js';
 import { createInstallPrompt } from './ui/installPrompt.js';
 import {
   gameState,
@@ -209,7 +211,11 @@ const gameHooks = {
     addHeat(heatGainFromWave(hexes.length));
     playImplodeWhoosh();
     // Per-hex clear sounds fire from onHexBeat, staggered by HEX_BEAT_MS.
-    playExtraBonus({ cascade, freshMult });
+    // Suppress the fresh-hit/cascade sting during the demo so each step reads
+    // as one clean effect (hex, dual hex, elimination) with nothing else.
+    if (!gameState.demoActive) {
+      playExtraBonus({ cascade, freshMult });
+    }
 
     const cascadeBoost = Math.min(cascade - 1, 4);
     kickBloom(0.4 + 0.2 * cascadeBoost + (waveHasBonus ? 0.15 : 0), 280);
@@ -270,6 +276,7 @@ async function detonateArmed() {
 
 async function handleTap(k, j) {
   if (isPaused()) return;
+  if (gameState.demoActive) return;
   initAudio();
 
   cancelGrace();
@@ -310,6 +317,45 @@ function resetRun() {
   applyThemePresentation(gameState.phase);
   hud.refresh();
 }
+
+const demoRuntime = {
+  hud,
+  applyThemePresentation,
+  rebuildWithPreset(presetBoard) {
+    cancelGrace();
+    unmountBoard(boardGroup, triangleViews);
+    board = presetBoard;
+    phantomSlots = createPhantomSlots(board, gameState.activeColors);
+    Object.assign(triangleViews, mountBoard(boardGroup, board, { phase: gameState.phase }));
+    vertexDots.rebuild(board);
+    pointer.rebuildHitCircles(board);
+  },
+  async spinAt(k, j, pickColor) {
+    return spin({
+      k,
+      j,
+      board,
+      phantomSlots,
+      boardGroup,
+      triangleViews,
+      effects: particles,
+      hooks: gameHooks,
+      pickColor,
+    });
+  },
+  flashCells(cellKeys, durationMs) {
+    for (const ck of cellKeys) triangleViews[ck]?.flash?.(durationMs);
+  },
+  highlightHex(k, j, color) {
+    return createHexHighlight({ boardGroup, k, j, color });
+  },
+  flashHeatWarning() {
+    // Actually drop gameState.heat so the RAF-driven hud.updateHeat call
+    // doesn't immediately overwrite the display. demoActive blocks drain.
+    gameState.heat = 0.15;
+    hud.updateHeat(gameState.heat);
+  },
+};
 
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
@@ -416,6 +462,7 @@ function showTitleScreen() {
       <img class="title-logo" src="${logoUrl}" alt="Rotatron" />
       <div class="title-buttons">
         <button class="title-btn title-btn-primary" data-action="start">START</button>
+        <button class="title-btn" data-action="demo">DEMO</button>
         <button class="title-btn" data-action="howto">HOW TO PLAY</button>
         <button class="title-btn" data-action="about">ABOUT</button>
       </div>
@@ -426,7 +473,38 @@ function showTitleScreen() {
 
   const installPrompt = createInstallPrompt({ container: hudContainer });
 
+  // Attract-mode: after 10s of idle on the title, auto-launch the demo.
+  const IDLE_MS = 10000;
+  let idleTimerId = null;
+  let idleActive = false;
+  const activityEvents = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'];
+  function armIdle() {
+    disarmIdle();
+    idleActive = true;
+    idleTimerId = setTimeout(() => {
+      idleTimerId = null;
+      launchDemo();
+    }, IDLE_MS);
+  }
+  function disarmIdle() {
+    if (idleTimerId != null) clearTimeout(idleTimerId);
+    idleTimerId = null;
+    idleActive = false;
+  }
+  const onActivity = () => {
+    if (idleActive) {
+      if (idleTimerId != null) clearTimeout(idleTimerId);
+      idleTimerId = setTimeout(() => {
+        idleTimerId = null;
+        launchDemo();
+      }, IDLE_MS);
+    }
+  };
+  for (const ev of activityEvents) window.addEventListener(ev, onActivity, { passive: true });
+
   const startGame = () => {
+    disarmIdle();
+    for (const ev of activityEvents) window.removeEventListener(ev, onActivity);
     el.classList.add('dismissed');
     setTimeout(() => el.remove(), 400);
     gameState.status = 'idle';
@@ -434,22 +512,49 @@ function showTitleScreen() {
     initAudio();
   };
 
+  function launchDemo() {
+    disarmIdle();
+    el.classList.add('behind-demo');
+    initAudio();
+    createDemo({
+      container: hudContainer,
+      runtime: demoRuntime,
+      onEnd: () => {
+        el.classList.remove('behind-demo');
+        resetRun();
+        gameState.status = 'title';
+        armIdle();
+      },
+    });
+  }
+
   el.querySelector('[data-action="start"]').addEventListener('click', startGame);
+  el.querySelector('[data-action="demo"]').addEventListener('click', launchDemo);
   el.querySelector('[data-action="howto"]').addEventListener('click', () => {
+    disarmIdle();
     el.classList.add('behind-howto');
     createHowToPlay({
       container: hudContainer,
-      onBack: () => el.classList.remove('behind-howto'),
+      onBack: () => {
+        el.classList.remove('behind-howto');
+        armIdle();
+      },
       onStart: startGame,
     });
   });
   el.querySelector('[data-action="about"]').addEventListener('click', () => {
+    disarmIdle();
     el.classList.add('behind-howto');
     createAbout({
       container: hudContainer,
-      onBack: () => el.classList.remove('behind-howto'),
+      onBack: () => {
+        el.classList.remove('behind-howto');
+        armIdle();
+      },
     });
   });
+
+  armIdle();
 }
 showTitleScreen();
 
