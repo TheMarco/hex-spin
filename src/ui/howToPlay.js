@@ -39,6 +39,12 @@ function tinyTri(color) {
 export function createHowToPlay({ container, onBack, onStart }) {
   const overlay = document.createElement('div');
   overlay.className = 'howto-screen';
+  const isTouch =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
+  const reverseInstructions = isTouch
+    ? `Hold the on-screen <strong>DIRECTION</strong> button with one finger and tap a vertex with another. While held, the next spin goes <strong>60° counter-clockwise</strong> instead.`
+    : `Hold <span class="howto-kbd">Shift</span> while clicking a vertex (or hold the on-screen <strong>DIRECTION</strong> button) to spin <strong>60° counter-clockwise</strong> instead.`;
   overlay.innerHTML = `
     <div class="howto-scroll">
       <div class="howto-top-actions">
@@ -84,9 +90,11 @@ export function createHowToPlay({ container, onBack, onStart }) {
           <h2>THE SPIN</h2>
         </div>
         <p class="howto-body">
-          Tap any glowing <strong>vertex dot</strong> on the board. The six triangles
-          around it rotate <strong>60° clockwise</strong>, carrying their colors
-          with them. That's your only move &mdash; everything else is consequence.
+          ${
+            isTouch
+              ? `Tap any glowing <strong>vertex dot</strong> on the board. The six triangles around it rotate <strong>60° clockwise</strong>, carrying their colors with them.`
+              : `Click any glowing <strong>vertex dot</strong> on the board. The six triangles around it rotate <strong>60° clockwise</strong>, carrying their colors with them.`
+          }
         </p>
         <div class="howto-demo">
           <div class="howto-step">
@@ -97,6 +105,21 @@ export function createHowToPlay({ container, onBack, onStart }) {
           <div class="howto-step">
             ${hexSvg([O, M, Y, C, P, G], { markerColor: '#fff' })}
             <div class="howto-step-label">AFTER (60° CW)</div>
+          </div>
+        </div>
+        <p class="howto-body" style="margin-top:18px">
+          <strong style="color:${Y}">Reverse direction.</strong> ${reverseInstructions}
+          Being able to go either way means you can usually reach the setup you want in one fewer spin.
+        </p>
+        <div class="howto-demo">
+          <div class="howto-step">
+            ${hexSvg([M, Y, C, P, G, O], { markerColor: '#fff' })}
+            <div class="howto-step-label">BEFORE</div>
+          </div>
+          <div class="howto-arrow howto-arrow-spin" style="transform:scaleX(-1)">⟳</div>
+          <div class="howto-step">
+            ${hexSvg([Y, C, P, G, O, M], { markerColor: '#fff' })}
+            <div class="howto-step-label">AFTER (60° CCW)</div>
           </div>
         </div>
         <p class="howto-note">
@@ -284,8 +307,20 @@ export function createHowToPlay({ container, onBack, onStart }) {
             <span><strong>Use the edges.</strong> Boundary vertices have hidden phantom colors. A border spin can drag in a fresh color you couldn't reach otherwise.</span>
           </li>
           <li>
+            <span class="howto-tip-mark" style="--mc:${Y}">⟲</span>
+            <span><strong>Spin both ways.</strong> ${
+              isTouch
+                ? `Hold <strong>DIRECTION</strong> with one finger and tap with the other`
+                : `Hold <span class="howto-kbd" style="--mc:${Y}">Shift</span> while clicking`
+            } to reverse the spin. Picking the shorter path often saves a full move.</span>
+          </li>
+          <li>
             <span class="howto-tip-mark" style="--mc:${P}">⏸</span>
-            <span><strong>Press P to pause.</strong> Heat freezes while paused &mdash; perfect for planning a setup without losing the run.</span>
+            <span>${
+              isTouch
+                ? `<strong>Tap pause.</strong> Use the <strong>pause</strong> button (next to mute) to freeze heat while you plan a setup &mdash; no time pressure while paused.`
+                : `<strong>Press P to pause.</strong> Heat freezes while paused &mdash; perfect for planning a setup without losing the run.`
+            }</span>
           </li>
           <li>
             <span class="howto-tip-mark" style="--mc:${G}">↻</span>
