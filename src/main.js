@@ -51,6 +51,14 @@ import {
   isMuted,
 } from './audio/sfx.js';
 import logoUrl from './images/logo.jpg';
+import {
+  isEmbedded,
+  rcadiaInit,
+  rcadiaConsumeLife,
+  rcadiaSubmitScore,
+} from './rcadia.js';
+
+rcadiaInit({ gameTitle: 'Rotatron' });
 
 const canvas = document.getElementById('scene');
 const hudContainer = document.getElementById('hud');
@@ -683,7 +691,7 @@ function showTitleScreen() {
 }
 showTitleScreen();
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isEmbedded()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
@@ -707,6 +715,8 @@ function frame(timeMs) {
   if (isHeatEmpty() && gameState.status === 'idle') {
     gameState.status = 'game_over';
     playGameOver();
+    rcadiaConsumeLife();
+    rcadiaSubmitScore(gameState.score);
     setTimeout(() => overlay.showGameOver(), 400);
   }
 

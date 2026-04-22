@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "package": "npm run build && rm -f hex-spin-rcadia.zip && (cd dist && zip -qr ../hex-spin-rcadia.zip .)",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
