@@ -154,12 +154,19 @@ function fovPunch(amount, durMs) {
   fovKickAge = 0;
 }
 
+let shiftHeld = false;
+let reverseBtnHeld = false;
+function isReverseActive() {
+  return shiftHeld || reverseBtnHeld;
+}
+
 const pointer = setupPointer({
   canvas,
   camera,
   board,
   boardGroup,
   onTap: handleTap,
+  getDirection: () => (isReverseActive() ? 'ccw' : 'cw'),
 });
 
 async function refreshBoardForPhase(newPhase) {
@@ -274,7 +281,7 @@ async function detonateArmed() {
   });
 }
 
-async function handleTap(k, j) {
+async function handleTap(k, j, direction = 'cw') {
   if (isPaused()) return;
   if (gameState.demoActive) return;
   initAudio();
@@ -291,6 +298,7 @@ async function handleTap(k, j) {
     effects: particles,
     hooks: gameHooks,
     deferResolve: true,
+    direction,
   });
   if (!ok) return;
   if (gameState.status !== 'idle') return;
@@ -330,7 +338,7 @@ const demoRuntime = {
     vertexDots.rebuild(board);
     pointer.rebuildHitCircles(board);
   },
-  async spinAt(k, j, pickColor) {
+  async spinAt(k, j, pickColor, direction = 'cw') {
     return spin({
       k,
       j,
@@ -341,7 +349,14 @@ const demoRuntime = {
       effects: particles,
       hooks: gameHooks,
       pickColor,
+      direction,
     });
+  },
+  flashReverseBtn(on) {
+    flashReverseBtn(on);
+  },
+  pressReverseBtn(on) {
+    pressReverseBtn(on);
   },
   flashCells(cellKeys, durationMs) {
     for (const ck of cellKeys) triangleViews[ck]?.flash?.(durationMs);
@@ -384,8 +399,25 @@ const muteBtn = document.createElement('button');
 muteBtn.className = 'mute-btn';
 muteBtn.setAttribute('aria-label', 'Toggle sound');
 
+const MUTE_ICON_ON = `
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 18V6l10-3v12"/>
+    <circle cx="6" cy="18" r="3"/>
+    <circle cx="16" cy="15" r="3"/>
+  </svg>
+`;
+const MUTE_ICON_OFF = `
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M9 18V6l10-3v12"/>
+    <circle cx="6" cy="18" r="3"/>
+    <circle cx="16" cy="15" r="3"/>
+    <line x1="3" y1="21" x2="21" y2="3"/>
+  </svg>
+`;
 function renderMute() {
-  muteBtn.textContent = isMuted() ? '♪  OFF' : '♪  ON';
+  muteBtn.innerHTML = isMuted() ? MUTE_ICON_OFF : MUTE_ICON_ON;
   muteBtn.classList.toggle('muted', isMuted());
 }
 
@@ -411,8 +443,21 @@ pauseOverlay.innerHTML = `
   </div>
 `;
 
+const PAUSE_ICON = `
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="6" y="4" width="4" height="16"/>
+    <rect x="14" y="4" width="4" height="16"/>
+  </svg>
+`;
+const PLAY_ICON = `
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <polygon points="6 4 20 12 6 20 6 4"/>
+  </svg>
+`;
 function renderPauseBtn() {
-  pauseBtn.textContent = userPaused ? '▶  RESUME' : '❚❚ PAUSE';
+  pauseBtn.innerHTML = userPaused ? PLAY_ICON : PAUSE_ICON;
   pauseBtn.classList.toggle('paused', userPaused);
 }
 
@@ -442,6 +487,86 @@ pauseBtn.addEventListener('click', togglePause);
 pauseOverlay.addEventListener('pointerdown', togglePause);
 hudContainer.appendChild(pauseBtn);
 renderPauseBtn();
+
+// Reverse-direction modifier. Touch-only: hold the on-screen DIRECTION button
+// to spin counter-clockwise on the next tap. Desktop users get the same effect
+// via Shift-click (see key listeners below) and don't need a button. Icon
+// floats above the frame and swaps CW→CCW while held.
+const isTouchDevice =
+  matchMedia('(hover: none) and (pointer: coarse)').matches || 'ontouchstart' in window;
+
+let reverseBtn = null;
+let setReverseBtnHeld = () => {};
+let flashReverseBtn = () => {};
+let pressReverseBtn = () => {};
+if (isTouchDevice) {
+  reverseBtn = document.createElement('button');
+  reverseBtn.className = 'reverse-btn';
+  reverseBtn.setAttribute('aria-label', 'Hold to reverse spin direction');
+  reverseBtn.innerHTML = `
+    <svg class="reverse-icon reverse-icon-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="21 5 21 11 15 11"/>
+      <path d="M19 15a8 8 0 1 1 -2 -8.4L21 11"/>
+    </svg>
+    <svg class="reverse-icon reverse-icon-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="3 5 3 11 9 11"/>
+      <path d="M5 15a8 8 0 1 0 2 -8.4L3 11"/>
+    </svg>
+    <span class="reverse-btn-label">DIRECTION</span>
+  `;
+
+  const renderReverseBtn = () => {
+    reverseBtn.classList.toggle('held', reverseBtnHeld);
+  };
+  setReverseBtnHeld = (next) => {
+    if (reverseBtnHeld === next) return;
+    reverseBtnHeld = next;
+    renderReverseBtn();
+    pointer.refreshCursor();
+  };
+  flashReverseBtn = (on) => {
+    reverseBtn.classList.toggle('demo-pulse', Boolean(on));
+  };
+  // Demo-only: simulate the pressed appearance (solid fill + CCW icon swap)
+  // without actually applying the reverse modifier. `reverseBtnHeld` stays
+  // false since real input is gated behind gameState.demoActive anyway.
+  pressReverseBtn = (on) => {
+    reverseBtn.classList.toggle('held', Boolean(on));
+  };
+
+  reverseBtn.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    reverseBtn.setPointerCapture?.(ev.pointerId);
+    setReverseBtnHeld(true);
+  });
+  const releaseReverse = (ev) => {
+    reverseBtn.releasePointerCapture?.(ev.pointerId);
+    setReverseBtnHeld(false);
+  };
+  reverseBtn.addEventListener('pointerup', releaseReverse);
+  reverseBtn.addEventListener('pointercancel', releaseReverse);
+  reverseBtn.addEventListener('contextmenu', (ev) => ev.preventDefault());
+  hudContainer.appendChild(reverseBtn);
+  renderReverseBtn();
+}
+
+window.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Shift' || shiftHeld) return;
+  shiftHeld = true;
+  pointer.refreshCursor();
+});
+window.addEventListener('keyup', (ev) => {
+  if (ev.key !== 'Shift') return;
+  shiftHeld = false;
+  pointer.refreshCursor();
+});
+window.addEventListener('blur', () => {
+  if (!shiftHeld) return;
+  shiftHeld = false;
+  pointer.refreshCursor();
+});
 
 window.addEventListener('keydown', (ev) => {
   if (ev.key !== 'p' && ev.key !== 'P') return;

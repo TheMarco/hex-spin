@@ -951,23 +951,30 @@ body {
   position: fixed;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 50;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 50%, transparent);
   color: var(--ui-accent);
-  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  padding: 6px 12px;
+  padding: 0;
   cursor: pointer;
-  text-shadow: 0 0 4px color-mix(in srgb, var(--ui-accent) 60%, transparent);
-  transition: background 200ms ease, border-color 200ms ease;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
   pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.mute-btn svg,
+.pause-btn svg {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ui-accent) 60%, transparent));
 }
 .mute-btn {
   right: 16px;
 }
 .pause-btn {
-  right: 108px;
+  left: 16px;
 }
 .mute-btn:hover,
 .pause-btn:hover {
@@ -977,12 +984,109 @@ body {
 .mute-btn.muted {
   color: var(--text-dim);
   border-color: color-mix(in srgb, var(--text-dim) 65%, transparent);
-  text-shadow: none;
+}
+.mute-btn.muted svg {
+  filter: none;
 }
 .pause-btn.paused {
   color: var(--ui-secondary);
   border-color: color-mix(in srgb, var(--ui-secondary) 70%, transparent);
-  text-shadow: 0 0 6px color-mix(in srgb, var(--ui-secondary) 75%, transparent);
+}
+.pause-btn.paused svg {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ui-secondary) 75%, transparent));
+}
+
+/* Reverse-direction hold button (bottom-center, touch devices only).
+   Labeled "DIRECTION"; the rotation-arrow icon floats above the frame as a
+   direction indicator (CW by default, CCW while held). The button itself
+   stays a clean labeled frame that the player can press with their thumb
+   without their finger covering the icon. */
+.reverse-btn {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 10px 22px;
+  min-width: 130px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  color: var(--ui-accent);
+  font-family: 'Hyperspace', 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.25em;
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 0 4px color-mix(in srgb, var(--ui-accent) 60%, transparent);
+  transition: background 100ms ease, border-color 100ms ease,
+              color 100ms ease, box-shadow 100ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.reverse-btn-label {
+  pointer-events: none;
+}
+.reverse-btn .reverse-icon {
+  width: 44px;
+  height: 44px;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ui-accent) 70%, transparent));
+  transition: opacity 120ms ease, transform 160ms ease, filter 120ms ease;
+  transform: translateX(-50%) scale(1);
+}
+.reverse-btn .reverse-icon-ccw {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.7);
+}
+.reverse-btn.held .reverse-icon-cw {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.7);
+}
+.reverse-btn.held .reverse-icon-ccw {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.reverse-btn:hover {
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+  border-color: var(--ui-accent);
+}
+.reverse-btn.held {
+  color: #0b0c15;
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  text-shadow: none;
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--ui-accent) 80%, transparent),
+    0 0 34px color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+.reverse-btn.held .reverse-icon {
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ui-accent) 90%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, var(--ui-accent) 55%, transparent));
+}
+/* Demo-mode pulse: grab the viewer's eye when the reverse step is narrated. */
+.reverse-btn.demo-pulse {
+  animation: reverse-demo-pulse 1100ms ease-in-out infinite;
+}
+@keyframes reverse-demo-pulse {
+  0%, 100% {
+    border-color: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+    box-shadow: 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent);
+  }
+  50% {
+    border-color: var(--ui-accent);
+    box-shadow:
+      0 0 18px color-mix(in srgb, var(--ui-accent) 85%, transparent),
+      0 0 36px color-mix(in srgb, var(--ui-accent) 45%, transparent);
+  }
 }
 
 /* Pause overlay */
@@ -2256,9 +2360,25 @@ body {
   100% { filter: brightness(1.0); }
 }
 @media (max-width: 720px) {
+  /* On mobile the bottom is reserved for the pause/direction/mute buttons,
+     so dock the narration just under the HUD row (HUD top:40px + 78px tall
+     + 12px gap) and flip the slide animation to enter from above. */
   .demo-narration {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    top: calc(130px + env(safe-area-inset-top, 0px));
+    bottom: auto;
     padding: 12px 16px 14px;
+    animation-name: demo-slide-in-top;
+  }
+  .demo-narration.leaving {
+    animation-name: demo-slide-out-top;
   }
   .demo-body { font-size: 15px; letter-spacing: 0.04em; }
+}
+@keyframes demo-slide-in-top {
+  from { opacity: 0; transform: translate(-50%, -24px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes demo-slide-out-top {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to   { opacity: 0; transform: translate(-50%, -16px); }
 }

@@ -17,9 +17,12 @@ export function buildSpinSlots(ts, board, phantomMap) {
   });
 }
 
-// Describe the bookkeeping for one clockwise step around the ring. This is the
-// pure carry model that the animated Three.js path in spin.js applies.
-export function planClockwiseSpin(slots) {
+// Describe the bookkeeping for one rotational step around the ring. Direction
+// 'cw' sends each slot's color to the next slot (idx+1); 'ccw' sends it to the
+// previous slot (idx-1). This is the pure carry model that the animated
+// Three.js path in spin.js applies.
+export function planSpin(slots, direction = 'cw') {
+  const step = direction === 'ccw' ? slots.length - 1 : 1;
   const ghostSourceIndices = [];
   const fadeInGhostIndices = [];
   const exitingRealKeys = [];
@@ -27,7 +30,7 @@ export function planClockwiseSpin(slots) {
   const phantomAssignments = [];
 
   for (const slot of slots) {
-    const target = slots[(slot.idx + 1) % slots.length];
+    const target = slots[(slot.idx + step) % slots.length];
 
     if (slot.type === 'phantom' && slot.color !== undefined) {
       ghostSourceIndices.push(slot.idx);

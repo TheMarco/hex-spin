@@ -4,7 +4,7 @@ import { isValidVertex } from './board.js';
 import { tween } from '../utils/animate.js';
 import { gameState, withBusy, tickColorSuppression } from './state.js';
 import { resolveCompletions } from './rules.js';
-import { buildSpinSlots, planClockwiseSpin } from './spin-model.js';
+import { buildSpinSlots, planSpin } from './spin-model.js';
 import { Triangle } from '../render/triangles.js';
 
 export { shiftColorsCW } from './spin-model.js';
@@ -21,6 +21,7 @@ export async function spin({
   applyColorShift = true,
   deferResolve = false,
   pickColor,
+  direction = 'cw',
 }) {
   if (gameState.status === 'game_over') return false;
   if (gameState.status === 'phase_transition') return false;
@@ -34,7 +35,8 @@ export async function spin({
     const vertexKey = key(k, j);
     const phantomMap = phantomSlots?.[vertexKey];
     const slots = buildSpinSlots(ts, board, phantomMap);
-    const transition = planClockwiseSpin(slots);
+    const transition = planSpin(slots, direction);
+    const rotationSign = direction === 'ccw' ? 1 : -1;
 
     // Pivot rotation. Real triangles rotate physically; phantom slots get a
     // temporary "ghost" Triangle rendered at the off-board position carrying
@@ -72,7 +74,7 @@ export async function spin({
     }
 
     await tween(340, 'easeInOutCubic', (eased) => {
-      pivot.rotation.z = -eased * (Math.PI / 3);
+      pivot.rotation.z = rotationSign * eased * (Math.PI / 3);
       for (const ghost of fadeInGhosts) ghost.setOpacity(eased);
       for (const view of fadeOutReals) view.setOpacity(1 - eased);
     });

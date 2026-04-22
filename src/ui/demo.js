@@ -14,6 +14,9 @@ const STEP2_HIGHLIGHT = [
 ];
 // All 6 cyan cells that will get eliminated (W_5's ring + the one rotating in).
 const STEP3_HIGHLIGHT = ring(5, 2).map(([c, r]) => key(c, r));
+// Reverse-direction step targets W_5 again; highlight its ring + pivot ring so
+// the viewer sees the source cells and where the CCW carry is going.
+const STEP4_HIGHLIGHT = ring(5, 2).map(([c, r]) => key(c, r));
 
 const M = NEON.magenta;
 const C = NEON.cyan;
@@ -39,15 +42,16 @@ function cloneBoard(board) {
   return out;
 }
 
-// CW rotation of P's ring. post[i] = pre[(i+5) % 6].
-function simulateRotation(board, pivotK, pivotJ) {
+// Ring rotation simulator. CW: post[i] = pre[(i+5)%6]; CCW: post[i] = pre[(i+1)%6].
+function simulateRotation(board, pivotK, pivotJ, direction = 'cw') {
   const next = cloneBoard(board);
   const cells = ring(pivotK, pivotJ);
   const pre = cells.map(([c, r]) => next[key(c, r)]?.color);
+  const step = direction === 'ccw' ? 1 : 5;
   for (let i = 0; i < 6; i++) {
     const [c, r] = cells[i];
     const k = key(c, r);
-    if (next[k]) next[k].color = pre[(i + 5) % 6];
+    if (next[k]) next[k].color = pre[(i + step) % 6];
   }
   return next;
 }
@@ -66,7 +70,7 @@ function simulateRefill(board, hexes, pickColor) {
 // Build a demo board: seeded-random filler + re-roll until every constraint holds.
 // Constraints: no pre-complete hex; the spin at (pivotK, pivotJ) completes exactly
 // the intended hex vertices; post-refill has no completions (no cascade).
-function buildDemoBoard({ overrides, palette, pivotK, pivotJ, intendedHexes }) {
+function buildDemoBoard({ overrides, palette, pivotK, pivotJ, intendedHexes, direction = 'cw' }) {
   const intended = new Set(intendedHexes.map(([k, j]) => `${k},${j}`));
   for (let seed = 7; seed < 50000; seed++) {
     const rand = mulberry32(seed);
@@ -75,7 +79,7 @@ function buildDemoBoard({ overrides, palette, pivotK, pivotJ, intendedHexes }) {
 
     if (findCompletedHexes(board).length > 0) continue;
 
-    const afterSpin = simulateRotation(board, pivotK, pivotJ);
+    const afterSpin = simulateRotation(board, pivotK, pivotJ, direction);
     const completed = findCompletedHexes(afterSpin);
     if (completed.length !== intended.size) continue;
     const completedKeys = new Set(completed.map((h) => `${h.k},${h.j}`));
@@ -170,12 +174,39 @@ function buildStep3Board() {
   });
 }
 
+// Step 4: CCW spin at (6,3) completes W_5=(5,2) with magenta. Same spin done
+// CW would NOT complete it — so the step is only solvable by reversing. After
+// CCW: (5,2) ← pre-(6,2), (4,2) ← pre-(5,2). Pre-(6,2)=M, pre-(5,2)=M, outer
+// W_5 cells (4,1)(5,1)(3,1)(3,2) all M; pre-(4,2)=P keeps W_5 un-completed
+// before the spin and blocks a CW completion ((5,2) would become P).
+function buildStep4Board() {
+  return buildDemoBoard({
+    overrides: {
+      '5,2': M,
+      '6,2': M,
+      '6,3': P,
+      '5,3': C,
+      '4,3': C,
+      '4,2': P,
+      '4,1': M,
+      '5,1': M,
+      '3,2': M,
+      '3,1': M,
+    },
+    palette: [M, P, C],
+    pivotK: 6,
+    pivotJ: 3,
+    intendedHexes: [[5, 2]],
+    direction: 'ccw',
+  });
+}
+
 export function createDemo({ container, runtime, onEnd }) {
   const narr = document.createElement('div');
   narr.className = 'demo-narration';
   narr.innerHTML = `
     <div class="demo-head">
-      <div class="demo-step-label">STEP 1 / 4</div>
+      <div class="demo-step-label">STEP 1 / 5</div>
       <button class="demo-skip" data-action="skip" aria-label="Skip demo">SKIP ×</button>
     </div>
     <div class="demo-title"></div>
@@ -192,7 +223,7 @@ export function createDemo({ container, runtime, onEnd }) {
   const aborts = [];
 
   function setStep(n, title, body) {
-    stepLabel.textContent = `STEP ${n} / 4`;
+    stepLabel.textContent = `STEP ${n} / 5`;
     titleEl.textContent = title;
     bodyEl.innerHTML = body;
     narr.classList.remove('pulse');
@@ -236,6 +267,8 @@ export function createDemo({ container, runtime, onEnd }) {
     if (!running) return;
     running = false;
     clearHexHighlights();
+    runtime.flashReverseBtn?.(false);
+    runtime.pressReverseBtn?.(false);
     gameState.demoActive = false;
     narr.classList.add('leaving');
     setTimeout(() => narr.remove(), 280);
@@ -328,9 +361,41 @@ export function createDemo({ container, runtime, onEnd }) {
     await wait(4500);
     if (aborted) return;
 
-    // Step 4 — heat warning, no spin
+    // Step 4 — reverse direction. Tap normally spins CW; holding the modifier
+    // reverses to CCW. Copy differs on touch vs mouse: on mobile we point at
+    // the on-screen button, on desktop we point at the Shift key.
+    const isTouch =
+      typeof window !== 'undefined' &&
+      (matchMedia('(hover: none) and (pointer: coarse)').matches ||
+        'ontouchstart' in window);
+    const reverseBody = isTouch
+      ? 'Hold the <strong>DIRECTION</strong> button below while tapping to spin <strong>counter-clockwise</strong>. Saves a ton of moves.'
+      : 'Hold <strong>SHIFT</strong> while tapping to spin <strong>counter-clockwise</strong>. Saves a ton of moves.';
+    setStep(4, 'SPIN BOTH WAYS', reverseBody);
+    runtime.rebuildWithPreset(buildStep4Board());
+    runtime.flashReverseBtn?.(true);
+    await wait(900);
+    if (aborted) return;
+    clearHexHighlights();
+    addHexHighlight(5, 2, M);
+    pulseHighlight(STEP4_HIGHLIGHT, 4, 900);
+    await wait(3800);
+    if (aborted) return;
+    clearHexHighlights();
+    // Swap from the attention pulse to a full pressed-look for the spin so
+    // the viewer sees the icon swap to CCW and the frame fill in — same
+    // visual the player will get when they hold the button themselves.
+    runtime.flashReverseBtn?.(false);
+    runtime.pressReverseBtn?.(true);
+    await runtime.spinAt(6, 3, refillPicker, 'ccw');
+    runtime.pressReverseBtn?.(false);
+    if (aborted) return;
+    await wait(3800);
+    if (aborted) return;
+
+    // Step 5 — heat warning, no spin
     setStep(
-      4,
+      5,
       "DON'T LET HEAT HIT ZERO",
       'The bar at the top drains constantly. Shattering hexes refills it. If it empties, the run ends.',
     );

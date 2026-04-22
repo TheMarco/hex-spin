@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ring } from '../src/utils/math.js';
-import { buildSpinSlots, planClockwiseSpin, shiftColorsCW } from '../src/game/spin-model.js';
+import { buildSpinSlots, planSpin, shiftColorsCW } from '../src/game/spin-model.js';
 
 describe('shiftColorsCW', () => {
   it('CW shift: slot i receives color from slot (i+5)%6 — i.e. previous N→NE', () => {
@@ -54,7 +54,7 @@ describe('buildSpinSlots', () => {
   });
 });
 
-describe('planClockwiseSpin', () => {
+describe('planSpin cw', () => {
   it('describes entering ghosts, exiting reals, and carry targets at the boundary', () => {
     const slots = buildSpinSlots(
       ring(2, 1),
@@ -66,7 +66,7 @@ describe('planClockwiseSpin', () => {
       { 0: 'P0', 3: 'P3', 5: 'P5' }
     );
 
-    expect(planClockwiseSpin(slots)).toEqual({
+    expect(planSpin(slots, 'cw')).toEqual({
       ghostSourceIndices: [0, 3, 5],
       fadeInGhostIndices: [0, 3],
       exitingRealKeys: ['2,1', '0,1'],
@@ -83,14 +83,14 @@ describe('planClockwiseSpin', () => {
     });
   });
 
-  it('stays entirely on-board for interior rings', () => {
+  it('defaults to cw when no direction is passed', () => {
     const ts = ring(6, 3);
     const board = Object.fromEntries(
       ts.map(([c, r], idx) => [`${c},${r}`, { color: String.fromCharCode(65 + idx) }])
     );
     const slots = buildSpinSlots(ts, board);
 
-    expect(planClockwiseSpin(slots)).toEqual({
+    expect(planSpin(slots)).toEqual({
       ghostSourceIndices: [],
       fadeInGhostIndices: [],
       exitingRealKeys: [],
@@ -104,5 +104,71 @@ describe('planClockwiseSpin', () => {
       ],
       phantomAssignments: [],
     });
+  });
+});
+
+describe('planSpin ccw', () => {
+  it('carries colors in the reverse direction (slot i sources from (i+1)%6)', () => {
+    const ts = ring(6, 3);
+    const board = Object.fromEntries(
+      ts.map(([c, r], idx) => [`${c},${r}`, { color: String.fromCharCode(65 + idx) }])
+    );
+    const slots = buildSpinSlots(ts, board);
+
+    expect(planSpin(slots, 'ccw')).toEqual({
+      ghostSourceIndices: [],
+      fadeInGhostIndices: [],
+      exitingRealKeys: [],
+      remapRealTargets: [
+        { targetKey: '4,2', sourceIdx: 0, sourceType: 'real', sourceKey: '5,2', color: 'A' },
+        { targetKey: '5,2', sourceIdx: 1, sourceType: 'real', sourceKey: '6,2', color: 'B' },
+        { targetKey: '6,2', sourceIdx: 2, sourceType: 'real', sourceKey: '6,3', color: 'C' },
+        { targetKey: '6,3', sourceIdx: 3, sourceType: 'real', sourceKey: '5,3', color: 'D' },
+        { targetKey: '5,3', sourceIdx: 4, sourceType: 'real', sourceKey: '4,3', color: 'E' },
+        { targetKey: '4,3', sourceIdx: 5, sourceType: 'real', sourceKey: '4,2', color: 'F' },
+      ],
+      phantomAssignments: [],
+    });
+  });
+
+  it('six ccw steps return to the identity on interior rings', () => {
+    const ts = ring(6, 3);
+    const board = Object.fromEntries(
+      ts.map(([c, r], idx) => [`${c},${r}`, { color: String.fromCharCode(65 + idx) }])
+    );
+    let colors = ts.map(([c, r]) => board[`${c},${r}`].color);
+    for (let step = 0; step < 6; step++) {
+      const slots = buildSpinSlots(
+        ts,
+        Object.fromEntries(ts.map(([c, r], i) => [`${c},${r}`, { color: colors[i] }]))
+      );
+      const plan = planSpin(slots, 'ccw');
+      const next = colors.slice();
+      for (const t of plan.remapRealTargets) {
+        const targetIdx = ts.findIndex(([c, r]) => `${c},${r}` === t.targetKey);
+        next[targetIdx] = t.color;
+      }
+      colors = next;
+    }
+    expect(colors).toEqual(ts.map(([c, r]) => board[`${c},${r}`].color));
+  });
+
+  it('cw then ccw on the same ring is a no-op', () => {
+    const ts = ring(6, 3);
+    const initial = ts.map((_, i) => String.fromCharCode(65 + i));
+    const applyPlan = (colors, direction) => {
+      const boardMap = Object.fromEntries(ts.map(([c, r], i) => [`${c},${r}`, { color: colors[i] }]));
+      const slots = buildSpinSlots(ts, boardMap);
+      const plan = planSpin(slots, direction);
+      const next = colors.slice();
+      for (const t of plan.remapRealTargets) {
+        const targetIdx = ts.findIndex(([c, r]) => `${c},${r}` === t.targetKey);
+        next[targetIdx] = t.color;
+      }
+      return next;
+    };
+    const afterCw = applyPlan(initial, 'cw');
+    const afterCcw = applyPlan(afterCw, 'ccw');
+    expect(afterCcw).toEqual(initial);
   });
 });
