@@ -44,6 +44,12 @@
         left: 0;
         transform: translateZ(0);
       }
+      /* Force the Play.fun SDK widget container's background to black.
+         The SDK marks it bg-transparent (Tailwind), so !important is
+         required to override. Selector matches the SDK's class soup. */
+      .w-full.pointer-events-none.relative.bg-transparent {
+        background: #000 !important;
+      }
     </style>
 
     <!-- Play.fun Browser SDK -->
