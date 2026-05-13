@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -11,8 +11,9 @@
     <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
 
-    <!-- Play.fun creator API key (user UUID from dashboard) -->
-    <meta name="x-ogp-key" content="d8ff06b7-76f6-4577-9eb7-2560fea24c69" />
+    <!-- Play.fun creator API key (user UUID from dashboard).
+         id="ogp-key-meta" is required by the SDK's reward-claim flow. -->
+    <meta name="x-ogp-key" content="d8ff06b7-76f6-4577-9eb7-2560fea24c69" id="ogp-key-meta" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
@@ -56,7 +57,7 @@
     <!-- Play.fun Browser SDK -->
     <script src="https://sdk.play.fun"></script>
   </head>
-  <body>
+  <body class="dark">
     <canvas id="scene"></canvas>
     <div id="hud"></div>
     <div id="playfun-topbar" aria-hidden="true"></div>
