@@ -8,7 +8,7 @@
     />
     <title>Rotatron — Play.fun</title>
     <meta name="description" content="Rotatron — neon/cyberpunk arcade puzzle, Play.fun edition." />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0a0612" />
     <meta name="color-scheme" content="dark" />
 
     <!-- Play.fun creator API key (user UUID from dashboard).
@@ -21,18 +21,12 @@
 
     <link rel="stylesheet" href="./style.css" />
     <style>
-      /* Override the Play.fun widget's main background variable so the chrome
-         blends with the game's page background (#0a0612 from style.css :root).
-         --card and similar vars are left to their .dark theme values so the
-         inner pills (TOTAL PTS / REWARDS) stay visible against the bar. */
-      body {
-        --background: #0a0612 !important;
-      }
-
-      /* Reserve the top 75px for the Play.fun SDK chrome (points widget,
-         rewards, login). The backdrop matches the game background color so
-         the bar is seamless even before the SDK styles itself, and stays
-         solid if the SDK fails to load. */
+      /* Reserve the top 75px for the Play.fun SDK chrome by shifting the
+         game's canvas and HUD down so their combined area starts at y=75.
+         Three.js renders to the smaller area (main.js subtracts the inset
+         from the renderer/camera height). The #playfun-topbar div is a
+         color-matched backdrop so the chrome area is visually consistent
+         even before the SDK paints itself. */
       #playfun-topbar {
         position: fixed;
         inset: 0 0 auto 0;
@@ -41,28 +35,17 @@
         z-index: 1;
         pointer-events: none;
       }
-      /* Push every top-anchored HUD element down by 75px so it sits below
-         the chrome area instead of bleeding into it. */
-      .heat-rail {
+      #scene,
+      #hud {
         top: 75px !important;
-      }
-      .hud-row {
-        top: calc(75px + 44px + env(safe-area-inset-top, 0px)) !important;
-      }
-      @media (max-width: 720px) {
-        .hud-row {
-          top: calc(75px + 40px + env(safe-area-inset-top, 0px)) !important;
-        }
-        .demo-narration {
-          top: calc(75px + 130px + env(safe-area-inset-top, 0px)) !important;
-        }
+        height: calc(100% - 75px) !important;
       }
     </style>
 
     <!-- Play.fun Browser SDK -->
     <script src="https://sdk.play.fun"></script>
   </head>
-  <body class="dark">
+  <body>
     <canvas id="scene"></canvas>
     <div id="hud"></div>
     <div id="playfun-topbar" aria-hidden="true"></div>

@@ -79,9 +79,17 @@ let board = createBoard(gameState.activeColors);
 let phantomSlots = createPhantomSlots(board, gameState.activeColors);
 let triangleViews = mountBoard(boardGroup, board, { phase: gameState.phase });
 
+// Effective viewport height. The Play.fun build sets
+// window.__rotatronTopInsetPx so the canvas is shifted down by that amount
+// via CSS; the renderer + camera need to use the reduced height to avoid
+// stretching the scene. Zero on the standalone build.
+function effectiveHeight() {
+  return window.innerHeight - (Number(window.__rotatronTopInsetPx) || 0);
+}
+
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.setSize(window.innerWidth, effectiveHeight(), false);
 camera.layers.enable(1);
 
 const BOARD_WIDTH = 6; // flat-top hex, 2 * HEX_SIDE
@@ -101,17 +109,12 @@ function fitCamera(w, h) {
   camera.position.z = Math.max(BASE_CAMERA_Z, minZ);
 
   const hudPx = w < 720 ? HUD_BOTTOM_PX_MOBILE : HUD_BOTTOM_PX;
-  // Optional top reservation (Play.fun build sets this to reserve space for
-  // the platform chrome). Zero on the standalone build so behavior is identical.
-  // Adds to the down-shift because the chrome occupies space ABOVE the
-  // existing top HUD, increasing total top reservation.
-  const topPx = Number(window.__rotatronTopInsetPx) || 0;
-  const pan = ((hudPx + topPx) / h) * camera.position.z * tanHalf;
+  const pan = (hudPx / h) * camera.position.z * tanHalf;
   camera.position.y = BASE_CAMERA_Y + pan;
   camera.lookAt(0, pan, 0);
   camera.updateProjectionMatrix();
 }
-fitCamera(window.innerWidth, window.innerHeight);
+fitCamera(window.innerWidth, effectiveHeight());
 
 const {
   render: renderFrame,
@@ -387,7 +390,7 @@ const demoRuntime = {
 
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
-  const h = window.innerHeight;
+  const h = effectiveHeight();
   fitCamera(w, h);
   cameraOrigin.copy(camera.position);
   renderer.setSize(w, h, false);
