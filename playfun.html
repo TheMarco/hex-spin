@@ -21,18 +21,23 @@
 
     <link rel="stylesheet" href="./style.css" />
     <style>
+      /* Override the Play.fun widget's main background variable so the chrome
+         blends with the game's page background (#0a0612 from style.css :root).
+         --card and similar vars are left to their .dark theme values so the
+         inner pills (TOTAL PTS / REWARDS) stay visible against the bar. */
+      body {
+        --background: #0a0612 !important;
+      }
+
       /* Reserve the top 75px for the Play.fun SDK chrome (points widget,
-         rewards, login). A solid-black backdrop sits at low z-index so the
-         platform widget renders above it; if the SDK fails to load, the
-         band stays as plain black. The game canvas renders edge-to-edge
-         underneath the band — the camera-pan in fitCamera (driven by
-         window.__rotatronTopInsetPx) keeps the board centered in the
-         remaining viewport. */
+         rewards, login). The backdrop matches the game background color so
+         the bar is seamless even before the SDK styles itself, and stays
+         solid if the SDK fails to load. */
       #playfun-topbar {
         position: fixed;
         inset: 0 0 auto 0;
         height: 75px;
-        background: #000;
+        background: #0a0612;
         z-index: 1;
         pointer-events: none;
       }
