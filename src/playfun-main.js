@@ -13,6 +13,28 @@ import { initPlayfun } from './playfun.js';
 // #playfun-topbar height / HUD offsets in playfun.html.
 window.__rotatronTopInsetPx = 75;
 
+// The Play.fun SDK widget mounts as a React tree and re-renders multiple
+// times (initial paint -> hydration -> data load -> auth flow). Every
+// re-render briefly resets the .points-overlay element's inline styles,
+// so a pure CSS override in playfun.html flickers from black to white.
+// Force background via inline !important and re-apply on any DOM change
+// in the widget subtree.
+function forcePointsOverlayBg() {
+  const overlays = document.querySelectorAll('.points-overlay');
+  overlays.forEach((el) => {
+    if (el.style.getPropertyValue('background-color') !== 'rgb(0, 0, 0)') {
+      el.style.setProperty('background-color', '#000', 'important');
+    }
+  });
+}
+forcePointsOverlayBg();
+new MutationObserver(forcePointsOverlayBg).observe(document.body, {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: ['class', 'style'],
+});
+
 const PLAYFUN_GAME_ID = '693fc7d8-e444-4c58-a78e-014d33b94331';
 
 initPlayfun({ gameId: PLAYFUN_GAME_ID });
