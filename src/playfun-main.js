@@ -14,17 +14,21 @@ import { initPlayfun } from './playfun.js';
 window.__rotatronTopInsetPx = 75;
 
 // The Play.fun SDK widget mounts as a React tree and re-renders multiple
-// times (initial paint -> hydration -> data load -> auth flow). Every
-// re-render briefly resets the .points-overlay element's inline styles,
-// so a pure CSS override in playfun.html flickers from black to white.
-// Force background via inline !important and re-apply on any DOM change
-// in the widget subtree.
+// times (initial paint -> hydration -> data load -> auth flow). Each
+// re-render resets inline styles on .points-overlay, so a pure CSS rule
+// flickers from black to whatever default the SDK widget renders. Force
+// black via inline !important on every relevant DOM mutation. The rAF
+// guard prevents self-triggered infinite loops since setProperty fires
+// the observer back at us.
+let forcingPointsOverlay = false;
 function forcePointsOverlayBg() {
-  const overlays = document.querySelectorAll('.points-overlay');
-  overlays.forEach((el) => {
-    if (el.style.getPropertyValue('background-color') !== 'rgb(0, 0, 0)') {
-      el.style.setProperty('background-color', '#000', 'important');
-    }
+  if (forcingPointsOverlay) return;
+  forcingPointsOverlay = true;
+  document.querySelectorAll('.points-overlay').forEach((el) => {
+    el.style.setProperty('background-color', '#000', 'important');
+  });
+  requestAnimationFrame(() => {
+    forcingPointsOverlay = false;
   });
 }
 forcePointsOverlayBg();
