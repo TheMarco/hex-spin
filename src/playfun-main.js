@@ -9,11 +9,9 @@
 
 import { initPlayfun } from './playfun.js';
 
-function syncTopInset() {
-  window.__rotatronTopInsetPx = Math.round(window.innerHeight * 0.15);
-}
-syncTopInset();
-window.addEventListener('resize', syncTopInset);
+// Fixed 75px reservation for Play.fun chrome. Kept in sync with the
+// #playfun-topbar height / HUD offsets in playfun.html.
+window.__rotatronTopInsetPx = 75;
 
 const PLAYFUN_GAME_ID = '693fc7d8-e444-4c58-a78e-014d33b94331';
 
