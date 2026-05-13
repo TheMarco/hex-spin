@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         styles: resolve(__dirname, 'styles.html'),
+        playfun: resolve(__dirname, 'playfun.html'),
       },
     },
   },

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Rotatron — Play.fun</title>
+    <meta name="description" content="Rotatron — neon/cyberpunk arcade puzzle, Play.fun edition." />
+    <meta name="theme-color" content="#000000" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- Play.fun creator API key (user UUID from dashboard) -->
+    <meta name="x-ogp-key" content="d8ff06b7-76f6-4577-9eb7-2560fea24c69" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+      /* Reserve the top 15% for Play.fun chrome. The canvas underneath still
+         renders edge-to-edge; this is just a black band that masks the upper
+         strip so the platform's widget / login UI doesn't overlap the board. */
+      #playfun-topbar {
+        position: fixed;
+        inset: 0 0 auto 0;
+        height: 15vh;
+        background: #000;
+        z-index: 1000;
+        pointer-events: none;
+      }
+      /* Push the in-game HUD (heat rail, score, buttons) below the bar. */
+      #hud {
+        padding-top: 15vh;
+        box-sizing: border-box;
+      }
+    </style>
+
+    <!-- Play.fun Browser SDK -->
+    <script src="https://sdk.play.fun"></script>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div id="hud"></div>
+    <div id="playfun-topbar" aria-hidden="true"></div>
+    <script type="module" src="/src/playfun-main.js"></script>
+  </body>
+</html>
