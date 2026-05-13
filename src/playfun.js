@@ -77,6 +77,14 @@ export function initPlayfun({ gameId, theme = 'dark' } = {}) {
 
   safeOn('OnReady', () => {
     sdkReady = true;
+    // Force dark theme imperatively — the constructor option doesn't seem
+    // to take effect on the inline widget background. setTheme is the
+    // documented runtime override.
+    try {
+      if (typeof sdk.setTheme === 'function') sdk.setTheme('dark');
+    } catch {
+      /* swallow */
+    }
   });
   safeOn('SavePointsSuccess', () => {});
   safeOn('SavePointsFailed', () => {});

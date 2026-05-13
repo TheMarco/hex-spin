@@ -103,8 +103,10 @@ function fitCamera(w, h) {
   const hudPx = w < 720 ? HUD_BOTTOM_PX_MOBILE : HUD_BOTTOM_PX;
   // Optional top reservation (Play.fun build sets this to reserve space for
   // the platform chrome). Zero on the standalone build so behavior is identical.
+  // Adds to the down-shift because the chrome occupies space ABOVE the
+  // existing top HUD, increasing total top reservation.
   const topPx = Number(window.__rotatronTopInsetPx) || 0;
-  const pan = ((hudPx - topPx) / h) * camera.position.z * tanHalf;
+  const pan = ((hudPx + topPx) / h) * camera.position.z * tanHalf;
   camera.position.y = BASE_CAMERA_Y + pan;
   camera.lookAt(0, pan, 0);
   camera.updateProjectionMatrix();
