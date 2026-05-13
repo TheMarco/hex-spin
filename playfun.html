@@ -44,12 +44,12 @@
         left: 0;
         transform: translateZ(0);
       }
-      /* Force the Play.fun SDK widget container's background to black.
-         The SDK widget uses Tailwind's .bg-transparent
-         (\`background-color: #0000\`). Override the utility class directly
-         so this beats anything Tailwind's cascade layer might do. */
-      .bg-transparent {
-        background-color: #000 !important;
+      /* Force the Play.fun SDK widget background to opaque black.
+         The actual wrapper is .points-overlay (the outermost container,
+         parent of the .bg-transparent inner div). Targeting it directly
+         avoids touching every other .bg-transparent element on the page. */
+      .points-overlay {
+        background: #000 !important;
       }
     </style>
 
