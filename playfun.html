@@ -21,12 +21,13 @@
 
     <link rel="stylesheet" href="./style.css" />
     <style>
-      /* Reserve the top 75px for the Play.fun SDK chrome. The canvas is
-         shifted down + shrunk (main.js renders to effectiveHeight, which
-         subtracts the inset). The HUD's container stays fixed-to-viewport,
-         but each top-anchored HUD element gets +75px added to its top so
-         it lands below the bar. Bottom-anchored HUD controls (pause / mute /
-         direction) stay put. */
+      /* Reserve the top 75px for the Play.fun SDK chrome.
+         #playfun-content is positioned at top:75 and uses transform to
+         become the containing block for ALL its position:fixed descendants
+         (#scene, #hud, .heat-rail, .hud-row, .pause-btn, etc.). Each child
+         resolves its top/bottom/inset against the wrapper instead of the
+         viewport — so the entire game lives below the bar with zero
+         per-element overrides. */
       #playfun-topbar {
         position: fixed;
         inset: 0 0 auto 0;
@@ -35,23 +36,13 @@
         z-index: 1;
         pointer-events: none;
       }
-      #scene {
-        top: 75px !important;
-        height: calc(100% - 75px) !important;
-      }
-      .heat-rail {
-        top: 75px !important;
-      }
-      .hud-row {
-        top: calc(75px + 44px + env(safe-area-inset-top, 0px)) !important;
-      }
-      @media (max-width: 720px) {
-        .hud-row {
-          top: calc(75px + 40px + env(safe-area-inset-top, 0px)) !important;
-        }
-        .demo-narration {
-          top: calc(75px + 130px + env(safe-area-inset-top, 0px)) !important;
-        }
+      #playfun-content {
+        position: fixed;
+        top: 75px;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateZ(0);
       }
     </style>
 
@@ -59,8 +50,10 @@
     <script src="https://sdk.play.fun"></script>
   </head>
   <body>
-    <canvas id="scene"></canvas>
-    <div id="hud"></div>
+    <div id="playfun-content">
+      <canvas id="scene"></canvas>
+      <div id="hud"></div>
+    </div>
     <div id="playfun-topbar" aria-hidden="true"></div>
     <script type="module" src="/src/playfun-main.js"></script>
   </body>
